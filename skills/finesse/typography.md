@@ -92,7 +92,7 @@ The rule: **does this number mutate while on screen, or align vertically against
 
 ## Hierarchy via weight and color, not size alone
 
-Amateur hierarchy cranks font-size for every level until the page is a ransom note. Strong hierarchy leans on **weight and color** and changes size sparingly. (Refactoring UI; Rauno Freiberg.)
+Amateur hierarchy cranks font-size for every level until the page is a ransom note. Strong hierarchy leans on **weight and color** and changes size sparingly.
 
 **Weight scale:**
 
@@ -115,7 +115,7 @@ Pure `#000` on white is harsher than anything in the physical world and vibrates
 
 **De-emphasize as much as you emphasize.** Hierarchy is relative. Rather than only making the important thing louder (bigger, bolder, darker), make the *unimportant* thing quieter (smaller, lighter, lower-contrast). Pushing secondary content down is usually cleaner than pushing primary content up, and it keeps the overall size scale tight.
 
-**NEVER change `font-weight` on hover/active/selected.** Bolder text is wider text, so swapping weight on interaction nudges everything after it — the row reflows and the layout jumps every time the pointer moves. (Rauno Freiberg.) Signal state with color, background, or a weight-stable indicator instead.
+**NEVER change `font-weight` on hover/active/selected.** Bolder text is wider text, so swapping weight on interaction nudges everything after it — the row reflows and the layout jumps every time the pointer moves. Signal state with color, background, or a weight-stable indicator instead.
 
 ```css
 /* WRONG — text gets wider on hover, layout shifts */
@@ -138,7 +138,7 @@ Pure `#000` on white is harsher than anything in the physical world and vibrates
 
 ## Measure (line length)
 
-The **measure** is the number of characters per line. Comfortable reading lives at **45–75 characters, ~66 ideal** (Anthony Hobday puts the sweet spot around ~70). Too long and the eye loses the start of the next line on the return sweep; too short and the rhythm breaks every few words.
+The **measure** is the number of characters per line. Comfortable reading lives at **45–75 characters, ~66 ideal** (the sweet spot sits around ~70). Too long and the eye loses the start of the next line on the return sweep; too short and the rhythm breaks every few words.
 
 ```css
 .prose, article p {
@@ -173,7 +173,7 @@ body { font-size: 1rem; line-height: 1.5; }
 h1   { font-size: clamp(2rem, 5vw, 4.5rem); line-height: 1.1; }
 ```
 
-**Lower BOTH letter-spacing and line-height as text grows; raise both as text shrinks.** (Anthony Hobday.) Big type set at default tracking and leading looks loose and unfinished; tightening both pulls a headline into a solid shape. Small type set tight gets cramped and illegible; loosening both opens it up.
+**Lower BOTH letter-spacing and line-height as text grows; raise both as text shrinks.** Big type set at default tracking and leading looks loose and unfinished; tightening both pulls a headline into a solid shape. Small type set tight gets cramped and illegible; loosening both opens it up.
 
 **Leave letter-spacing alone otherwise.** At body sizes the typeface's designed spacing is already correct — don't touch `letter-spacing` for ordinary text. The only routine exceptions:
 - **Large headlines** — a slightly negative tracking (e.g. `-0.02em`) tightens display type.
@@ -186,7 +186,7 @@ h1            { letter-spacing: -0.02em; }
 
 ## Sizing
 
-**Body text ≥16px. Form inputs ≥16px — this one is non-negotiable.** Any `font-size` below 16px on a focusable `<input>`, `<select>`, or `<textarea>` makes **iOS Safari auto-zoom** the page on focus, yanking the layout around the field. (Rauno Freiberg.) The fix is simply never to go under 16px on inputs.
+**Body text ≥16px. Form inputs ≥16px — this one is non-negotiable.** Any `font-size` below 16px on a focusable `<input>`, `<select>`, or `<textarea>` makes **iOS Safari auto-zoom** the page on focus, yanking the layout around the field. The fix is simply never to go under 16px on inputs.
 
 ```css
 body { font-size: 16px; }          /* floor for readable body text */
@@ -202,7 +202,7 @@ input, select, textarea {
 
 The 16px floor is also an accessibility baseline — see [accessibility.md](accessibility.md). Smaller is acceptable only for genuinely secondary metadata (captions, legal), never for primary reading or any input.
 
-**Fluid sizing with `clamp()`** lets large type scale with the viewport between a floor and a ceiling, with no breakpoints (Rauno Freiberg):
+**Fluid sizing with `clamp()`** lets large type scale with the viewport between a floor and a ceiling, with no breakpoints:
 
 ```css
 /* clamp(MIN, PREFERRED, MAX): never smaller than 2rem, never larger than 4.5rem,
@@ -219,6 +219,6 @@ Reserve `clamp()` for headings and hero/display type where the size genuinely sh
 
 ## Font choices
 
-- **At most two typefaces.** One is often enough — separate roles with weight, size, and color before reaching for a second family. A third typeface almost always reads as noise. (Refactoring UI; Anthony Hobday.)
+- **At most two typefaces.** One is often enough — separate roles with weight, size, and color before reaching for a second family. A third typeface almost always reads as noise.
 - **Pick families with 5+ weights.** Hierarchy is built primarily on weight (see above), so a typeface needs room — at minimum a regular (400), a medium (500), and a bold (600/700), with more headroom welcome. A two-weight family boxes you in and forces you back onto size for every distinction. Superfamilies (e.g. Inter, with a paired mono) also let the two-typeface budget cover body, display, and code coherently.
 - **Pair by contrast, not similarity.** If you do use two, make them clearly different (e.g. a serif display over a sans body) so the pairing reads as intentional rather than a near-miss.

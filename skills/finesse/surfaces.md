@@ -60,7 +60,7 @@ A shadow's only legitimate job is **depth** — telling the eye one surface floa
 
 Real light falls from above, so real shadows pool *below* the object. Every elevation shadow must be **offset downward** — a positive vertical `y`, zero or near-zero `x`. A symmetric `0 0 Npx` glow has no light source and reads as a halo, not a lift.
 
-**Anthony Hobday's ratio: the blur radius should be roughly twice the vertical offset.** A shadow sitting `2px` below its object wants about `4px` of blur; `4px` down wants ~`8px` blur; `8px` down wants ~`16px`. Tighter than 2× looks hard and cut-out; much looser looks like fog. This single ratio is what separates a believable shadow from a default-looking one.
+**The ratio: the blur radius should be roughly twice the vertical offset.** A shadow sitting `2px` below its object wants about `4px` of blur; `4px` down wants ~`8px` blur; `8px` down wants ~`16px`. Tighter than 2× looks hard and cut-out; much looser looks like fog. This single ratio is what separates a believable shadow from a default-looking one.
 
 ### Layer at least two shadows
 
@@ -73,7 +73,7 @@ Two or three layers compound into something that reads as a single, physically p
 
 ### Tint the shadow with the surface hue — never pure black
 
-Pure-black shadows (`rgba(0,0,0,…)` at any meaningful alpha over a colored or warm surface) look muddy and dead. Real shadows take on the color of the surface they fall on. **Tint every shadow toward the hue of the background it sits on, and toward a darker, slightly more saturated version of that hue** (Josh Comeau, *Refactoring UI*). On a warm off-white page, push the shadow toward a desaturated warm brown; on a cool gray app, toward a dark slate-blue. Keep alpha low and let the tint do the work. The black recipe below is the *neutral* fallback for a truly neutral surface — the moment the surface has a hue, give the shadow that hue.
+Pure-black shadows (`rgba(0,0,0,…)` at any meaningful alpha over a colored or warm surface) look muddy and dead. Real shadows take on the color of the surface they fall on. **Tint every shadow toward the hue of the background it sits on, and toward a darker, slightly more saturated version of that hue.** On a warm off-white page, push the shadow toward a desaturated warm brown; on a cool gray app, toward a dark slate-blue. Keep alpha low and let the tint do the work. The black recipe below is the *neutral* fallback for a truly neutral surface — the moment the surface has a hue, give the shadow that hue.
 
 ### Light-mode 3-layer recipe
 
@@ -146,7 +146,7 @@ When a card lifts on hover, transition **only `box-shadow`** — never `transiti
 
 ### Dark mode: collapse the stack
 
-**Layered depth shadows are essentially invisible in dark interfaces** — a black shadow on a near-black surface has nothing to darken. Stacking five of them buys you nothing but render cost. **Anthony Hobday's rule: don't use shadows in dark interfaces.** Elevation in dark mode is communicated by *lighter* surfaces (a raised panel is a brighter gray than the page) and by a faint **light ring**, not by a cast shadow.
+**Layered depth shadows are essentially invisible in dark interfaces** — a black shadow on a near-black surface has nothing to darken. Stacking five of them buys you nothing but render cost. **The rule: don't use shadows in dark interfaces.** Elevation in dark mode is communicated by *lighter* surfaces (a raised panel is a brighter gray than the page) and by a faint **light ring**, not by a cast shadow.
 
 Collapse the whole scale to a single hairline ring made of low-alpha *white*:
 
@@ -166,7 +166,7 @@ The resting ring is `rgba(255,255,255,0.08)`; brighten to ~`0.13` on hover to ac
 
 ### Don't mix depth techniques
 
-Anthony Hobday again, and it generalizes past dark mode: **pick one depth language per surface and commit.** Don't give the same card a cast shadow *and* a heavy border *and* a gradient *and* an inner highlight — each technique implies a slightly different light model, and stacking them muddies all of them. Shadow *or* a raised background *or* a ring — not three at once.
+This generalizes past dark mode: **pick one depth language per surface and commit.** Don't give the same card a cast shadow *and* a heavy border *and* a gradient *and* an inner highlight — each technique implies a slightly different light model, and stacking them muddies all of them. Shadow *or* a raised background *or* a ring — not three at once.
 
 ### Decision table — shadow vs border
 
@@ -212,7 +212,7 @@ The reason is concrete: **a tinted outline picks up a color the image's own edge
 
 ## Optical alignment
 
-**The eye, not the ruler, is the judge** (Anthony Hobday). Geometric centering and equal numeric padding are *starting points*; when a shape is visually lopsided, mathematically "correct" looks wrong. Trust what you see and nudge until it sits right, even when the numbers go uneven. The fixes below are the recurring cases.
+**The eye, not the ruler, is the judge.** Geometric centering and equal numeric padding are *starting points*; when a shape is visually lopsided, mathematically "correct" looks wrong. Trust what you see and nudge until it sits right, even when the numbers go uneven. The fixes below are the recurring cases.
 
 ### Buttons with text and a trailing/leading icon
 
@@ -254,7 +254,7 @@ Many icons are drawn with uneven whitespace inside their own viewBox — an arro
 
 ## Minimum hit area
 
-Every interactive control needs a touch/click target of at least **44×44px** (the WCAG 2.5.5 *Target Size (Enhanced)* figure, and Apple HIG's minimum) — **≥40×40px** is an acceptable floor in dense desktop UI (close to WCAG 2.5.8's 24px AA minimum but far more comfortable). This is about the *hit area*, not the *visible size*. A 16px icon button, a 20px checkbox, a small close "×" — all are visually fine and all have hit areas far too small for a thumb.
+Every interactive control needs a touch/click target of at least **44×44px** (the WCAG 2.5.5 *Target Size (Enhanced)* figure) — **≥40×40px** is an acceptable floor in dense desktop UI (close to WCAG 2.5.8's 24px AA minimum but far more comfortable). This is about the *hit area*, not the *visible size*. A 16px icon button, a 20px checkbox, a small close "×" — all are visually fine and all have hit areas far too small for a thumb.
 
 **When the visible control is smaller than the minimum, extend the target with a pseudo-element** instead of bloating the visible box. Put the control in `position: relative`, then lay an invisible, centered `::after` over it sized to 40–44px:
 
@@ -297,6 +297,6 @@ Shadows get the glory, but borders are correct more often than the depth-everyth
 - **Form input outlines** — borders are reliably perceivable by assistive tech and survive forced-colors / high-contrast modes, where shadows are dropped (see [accessibility.md](accessibility.md)). An input's edge should be a border, not a shadow.
 - **Dense data** — lists, grids, and tables where you need many fine separators and shadow blur would muddy the layout.
 
-**Color the border to a near-neutral that contrasts with *both* the container and the background** (Anthony Hobday). A border the same value as the surface it's on disappears; one too dark turns into a harsh frame. Aim for a low-contrast gray that's distinct from the fill on one side and the page on the other — visible but quiet.
+**Color the border to a near-neutral that contrasts with *both* the container and the background.** A border the same value as the surface it's on disappears; one too dark turns into a harsh frame. Aim for a low-contrast gray that's distinct from the fill on one side and the page on the other — visible but quiet.
 
 **But prefer fewer borders overall.** Every border is a line the eye has to process; a page full of boxed-in regions feels busy and heavy. Separate with **spacing and background-color** first, then a shadow if the element is genuinely elevated, and reach for a border only when those don't fit the job (dividers, cells, inputs, dense data). The full "fewer borders" argument and the spacing-first hierarchy live in [layout-and-color.md](layout-and-color.md) — defer to it for the broader call.

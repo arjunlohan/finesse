@@ -30,7 +30,7 @@ Start with **too much** space, then tighten until it feels right. Designs that f
 
 Space is the cheapest structural device you have — cheaper than borders, cheaper than boxes. **More space *between* groups, less space *within* them.** Elements that sit closer together read as more related; elements pushed apart read as separate. This single relationship conveys hierarchy without a single line drawn.
 
-Anthony Hobday's rule: **spacing goes between points of high contrast.** The gap belongs at the seam between two groups, not scattered evenly through both. The classic tell of an amateur layout is a label sitting equidistant between its *own* input above and the *next* field's input below — so it's ambiguous which it belongs to. Pull the label toward its input.
+The rule: **spacing goes between points of high contrast.** The gap belongs at the seam between two groups, not scattered evenly through both. The classic tell of an amateur layout is a label sitting equidistant between its *own* input above and the *next* field's input below — so it's ambiguous which it belongs to. Pull the label toward its input.
 
 ```css
 /* WRONG — uniform gap, no grouping. Label floats between two fields. */
@@ -71,7 +71,7 @@ Define the scale **upfront**, on a `4px` or `8px` base, with **non-linear** step
 Two rules keep the scale honest:
 
 1. **No two values within ~25% of each other.** `24` then `32` is a 33% jump — fine. `24` then `28` is 17% — drop one. If two steps are nearly the same, you don't have a scale, you have indecision.
-2. **Measurements should be mathematically related** (Anthony Hobday). Every value is a clean multiple of the base. `8 / 16 / 24 / 32` relate; `8 / 15 / 23 / 30` are noise. Arbitrary numbers (`13px`, `17px`, `7px`) are the spacing equivalent of hand-picked animation durations — the single biggest tell that nothing was systematized.
+2. **Measurements should be mathematically related.** Every value is a clean multiple of the base. `8 / 16 / 24 / 32` relate; `8 / 15 / 23 / 30` are noise. Arbitrary numbers (`13px`, `17px`, `7px`) are the spacing equivalent of hand-picked animation durations — the single biggest tell that nothing was systematized.
 
 Tailwind ships this for you: its default scale (`p-1`=4px, `p-2`=8px, `p-4`=16px, `p-6`=24px…) is already 4px-based and non-linear at the top. Use the tokens; don't reach for arbitrary `p-[13px]` values — that defeats the system.
 
@@ -81,7 +81,7 @@ Tailwind ships this for you: its default scale (`p-1`=4px, `p-2`=8px, `p-4`=16px
 
 - **Use a grid for horizontal layout.** If you lay things out across the page, use a **12-column grid** — 12 divides into halves, thirds, quarters, and sixths, so it absorbs almost any column count. Snap content to grid lines, not eyeballed pixels.
 - **Outer padding ≥ inner padding.** The space *around* a container must be at least the space *between* its children, or the group bleeds into its surroundings and stops reading as a unit. A card with `16px` gaps between rows needs **≥16px** of its own padding.
-- **Button horizontal padding ≈ 2× vertical** (Anthony Hobday). A button reads as a button when it's wider than it is tall around the label: `padding: 8px 16px`, `10px 20px`, `12px 24px`. Equal padding makes a cramped square; this ratio makes a control.
+- **Button horizontal padding ≈ 2× vertical.** A button reads as a button when it's wider than it is tall around the label: `padding: 8px 16px`, `10px 20px`, `12px 24px`. Equal padding makes a cramped square; this ratio makes a control.
 
 ```css
 .card   { padding: var(--space-4); display: grid; gap: var(--space-4); } /* outer ≥ inner */
@@ -98,7 +98,7 @@ Tailwind ships this for you: its default scale (`p-1`=4px, `p-2`=8px, `p-4`=16px
 
 ### No dead zones in lists
 
-In a vertical or horizontal list of **interactive** items, there must be **no inert gaps** between them. A 12px `margin` between two menu rows is 12px where the cursor is over *nothing* — the click does nothing, the hover highlight flickers off, and a fast user misses. It feels broken even though nothing is "wrong" (Rauno).
+In a vertical or horizontal list of **interactive** items, there must be **no inert gaps** between them. A 12px `margin` between two menu rows is 12px where the cursor is over *nothing* — the click does nothing, the hover highlight flickers off, and a fast user misses. It feels broken even though nothing is "wrong."
 
 The fix is to **grow each item's `padding`, not the space between them.** Every pixel between adjacent items belongs to one of them and is therefore clickable. The visual rhythm is identical; the hit behavior is continuous.
 
@@ -121,13 +121,17 @@ The fix is to **grow each item's `padding`, not the space between them.** Every 
 
 This applies to menus, tabs, list rows, segmented controls, sidebars — anything where adjacent targets are clickable. Reserve `gap`/`margin` between items for *non-interactive* lists (paragraphs, cards with their own clear boundaries) where a miss costs nothing.
 
+**The inverse failure is cramming.** Gapless padding only *reads* as separation when each item is wider than its content. A segmented control whose icon-plus-label tabs are sized to *just* fit will have its busiest segment — the one carrying a count badge or the longest label — spill to its edges and visually collide with its neighbors, even though the padding is nominally there. Size equal-width tabs off the **widest** segment (its content **plus** breathing room), not the average, so every tab keeps whitespace around its content. If that makes the control too wide, trim the *content* (smaller icon, tighter icon-to-label gap, a leaner badge) — never the inter-item space, which would reintroduce dead zones. The two failures are mirror images: too much space *between* items breaks the hit target; too little space *around* each item's content breaks the read.
+
+And a **moving selection indicator** (the sliding pill in a segmented control) rides the same geometry: inset it from the track by the track's own padding on *every* side, ends included, so its gap matches top, bottom, **and** the two ends. A common bug pins the indicator at `left: 0` and translates it by the raw `offsetLeft`, which shoves it a padding-width off: the first segment's pill kisses the track edge while the last gains a double gap, and the centred label drifts toward one side of the pill. Anchor the indicator *inside* the padding (or translate to `offsetLeft`, not `offsetLeft − padding`) so its end inset equals its vertical inset and the active content stays centred within it. When segment widths differ, size the indicator to the active segment each time — never a fixed width.
+
 ---
 
 ## Color
 
 ### Near-black and near-white, never pure
 
-Pure `#000` and pure `#FFF` are harsh. Pure black text on a pure white background vibrates — the contrast is *higher* than real-world ink on paper ever is, and it reads as cheap. Use a **near-black** for text and a **near-white** for backgrounds (Anthony Hobday; Refactoring UI).
+Pure `#000` and pure `#FFF` are harsh. Pure black text on a pure white background vibrates — the contrast is *higher* than real-world ink on paper ever is, and it reads as cheap. Use a **near-black** for text and a **near-white** for backgrounds.
 
 ```css
 :root {
@@ -187,7 +191,7 @@ A real palette is larger than beginners expect. Plan for:
 
 ### Functional color scales
 
-Map color steps to a **role**, not a name — this is what makes theming and contrast systematic. Two references: **Radix Colors** (a 12-step functional scale) and **Vercel Geist** (a 10-step scale numbered 100–1000). Geist's role mapping:
+Map color steps to a **role**, not a name — this is what makes theming and contrast systematic. A common functional scale uses **10 steps numbered 100–1000**, mapped to roles:
 
 | Steps | Role |
 | --- | --- |

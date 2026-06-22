@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pricing</title>
+<style>
+  :root {
+    /* ---- Motion tokens ---- */
+    --duration-fast:   150ms;  /* hover, press, tint */
+    --duration-base:   200ms;  /* small reveals, toggles */
+    --duration-slow:   300ms;  /* larger surface changes */
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1);   /* entering */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15);   /* exiting  */
+    --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ---- Spacing scale (4px base, non-linear) ---- */
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+
+    /* ---- Color: warm near-white page, near-black ink ---- */
+    --page:        hsl(40 12% 97%);
+    --surface:     hsl(0 0% 100%);
+    --surface-sub: hsl(40 16% 98.5%);
+
+    --text-1: hsl(240 12% 12%);   /* primary — near-black, cool cast */
+    --text-2: hsl(240 7% 38%);    /* secondary */
+    --text-3: hsl(240 6% 56%);    /* tertiary / metadata */
+
+    --hairline: hsl(40 10% 90%);
+
+    /* Accent — indigo, dark enough to carry white text at 4.5:1 */
+    --accent:      hsl(245 58% 51%);
+    --accent-deep: hsl(245 62% 44%);
+    --accent-tint: hsl(245 60% 96%);
+    --accent-ring: hsl(245 70% 60%);
+
+    --success:     hsl(158 64% 38%);
+    --success-bg:  hsl(158 52% 94%);
+
+    /* ---- Concentric radii: outer 24, padding 32 reads as separate;
+       inner badge/price/features use their own tuned radii ---- */
+    --radius-card:    24px;
+    --radius-cta:     14px;   /* CTA sits inside 32px padding → independent */
+    --radius-feature: 10px;
+    --radius-badge:   999px;
+
+    /* ---- Layered, hue-tinted elevation shadows (warm) ---- */
+    --shadow-1:
+      0 0 0 1px hsl(40 10% 50% / 0.05),
+      0 1px 2px hsl(38 28% 30% / 0.05),
+      0 2px 6px hsl(38 28% 30% / 0.045);
+    --shadow-2:
+      0 0 0 1px hsl(40 10% 50% / 0.05),
+      0 2px 4px hsl(38 28% 30% / 0.06),
+      0 8px 18px hsl(38 28% 30% / 0.07),
+      0 16px 32px hsl(38 28% 30% / 0.05);
+
+    --cta-shadow-1:
+      0 1px 2px hsl(245 50% 30% / 0.30),
+      0 2px 6px hsl(245 50% 30% / 0.22);
+    --cta-shadow-2:
+      0 2px 6px hsl(245 50% 30% / 0.34),
+      0 8px 18px hsl(245 50% 30% / 0.30);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: var(--space-6) var(--space-5);
+    background:
+      radial-gradient(120% 90% at 50% -10%, hsl(40 20% 99%), transparent 60%),
+      var(--page);
+    color: var(--text-1);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* ============ CARD ============ */
+  .card {
+    position: relative;
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-1);
+    transition:
+      box-shadow var(--duration-base) var(--ease-out),
+      transform   var(--duration-base) var(--ease-out);
+    transform: translateY(0);
+    will-change: transform;
+  }
+
+  @media (hover: hover) {
+    .card:hover {
+      box-shadow: var(--shadow-2);
+      transform: translateY(-3px);
+    }
+  }
+
+  /* ---- Header: plan name + popular badge ---- */
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .plan {
+    margin: 0;
+    font-size: 0.9375rem;   /* 15px */
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--text-2);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px 5px 9px;   /* optical: icon side trimmed */
+    border-radius: var(--radius-badge);
+    background: var(--accent-tint);
+    color: var(--accent-deep);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .badge svg { width: 13px; height: 13px; flex: none; }
+
+  /* ---- Price block ---- */
+  .price-block {
+    margin-top: var(--space-5);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .currency {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-1);
+    align-self: flex-start;
+    margin-top: 6px;
+    line-height: 1;
+  }
+
+  .amount {
+    font-size: 3.5rem;
+    line-height: 0.95;
+    font-weight: 680;
+    letter-spacing: -0.03em;
+    color: var(--text-1);
+    font-variant-numeric: tabular-nums;   /* number changes in place */
+  }
+
+  .period {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-3);
+  }
+
+  .desc {
+    margin: var(--space-3) 0 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--text-2);
+    text-wrap: pretty;
+    max-width: 30ch;
+  }
+
+  /* ---- Billing toggle ---- */
+  .billing {
+    margin-top: var(--space-5);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .seg {
+    position: relative;
+    display: inline-flex;
+    padding: 3px;
+    background: var(--surface-sub);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;   /* outer */
+  }
+
+  .seg__thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    height: calc(100% - 6px);
+    border-radius: 9px;   /* 12 - 3 padding = concentric */
+    background: var(--surface);
+    box-shadow:
+      0 0 0 1px hsl(40 10% 50% / 0.06),
+      0 1px 2px hsl(38 28% 30% / 0.10);
+    transition: transform var(--duration-base) var(--ease-in-out),
+                width     var(--duration-base) var(--ease-in-out);
+    z-index: 0;
+  }
+
+  .seg__opt {
+    position: relative;
+    z-index: 1;
+    appearance: none;
+    border: none;
+    background: none;
+    margin: 0;
+    padding: 6px 13px;
+    font: inherit;
+    font-size: 0.8125rem;   /* 13px label */
+    font-weight: 600;
+    color: var(--text-3);
+    cursor: pointer;
+    border-radius: 9px;
+    transition: color var(--duration-fast) var(--ease-standard);
+    white-space: nowrap;
+  }
+  .seg__opt[aria-pressed="true"] { color: var(--text-1); }
+  @media (hover: hover) {
+    .seg__opt:not([aria-pressed="true"]):hover { color: var(--text-2); }
+  }
+  .seg__opt:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent-ring);
+  }
+
+  .save {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--success);
+    background: var(--success-bg);
+    padding: 3px 9px;
+    border-radius: 999px;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity var(--duration-base) var(--ease-out),
+                transform var(--duration-base) var(--ease-out);
+    pointer-events: none;
+  }
+  .save.is-on {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  /* ---- Divider (coplanar → border, not shadow) ---- */
+  .rule {
+    height: 1px;
+    margin: var(--space-5) 0;
+    background: var(--hairline);
+    border: 0;
+  }
+
+  /* ---- Features ---- */
+  .features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    color: var(--text-1);
+  }
+  .check {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    border-radius: 999px;
+    background: var(--success-bg);
+    color: var(--success);
+    display: grid;
+    place-items: center;
+  }
+  .check svg { width: 12px; height: 12px; }
+
+  /* ---- CTA ---- */
+  .cta {
+    position: relative;
+    margin-top: var(--space-6);
+    width: 100%;
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    color: #fff;
+    background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+    border-radius: var(--radius-cta);
+    padding: 14px 20px;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: var(--cta-shadow-1);
+    transition:
+      transform   var(--duration-fast) var(--ease-standard),
+      box-shadow  var(--duration-fast) var(--ease-out),
+      filter      var(--duration-fast) var(--ease-standard);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) {
+    .cta:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--cta-shadow-2);
+      filter: brightness(1.05);
+    }
+  }
+  .cta:active { transform: scale(0.97); transition-duration: 80ms; }
+  .cta:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent-ring), var(--cta-shadow-1);
+  }
+  .cta[disabled] { cursor: default; }
+
+  /* CTA label/icon group — slides up & out when loading/done */
+  .cta__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform var(--duration-base) var(--ease-in-out),
+                opacity   var(--duration-fast) var(--ease-in);
+  }
+  .cta__arrow {
+    width: 16px; height: 16px;
+    transition: transform var(--duration-base) var(--ease-standard);
+  }
+  @media (hover: hover) {
+    .cta:hover .cta__arrow { transform: translateX(3px); }
+  }
+
+  /* Loading spinner — centered overlay */
+  .cta__spinner {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity var(--duration-fast) var(--ease-out),
+                transform var(--duration-base) var(--ease-out);
+    pointer-events: none;
+  }
+  .cta__spinner svg { width: 20px; height: 20px; animation: spin 0.7s linear infinite; }
+
+  /* Success check — centered overlay */
+  .cta__done {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity var(--duration-fast) var(--ease-out),
+                transform var(--duration-base) var(--ease-out);
+    pointer-events: none;
+  }
+  .cta__done svg { width: 22px; height: 22px; }
+
+  /* state: loading */
+  .cta.is-loading .cta__label { opacity: 0; transform: translateY(-130%); }
+  .cta.is-loading .cta__spinner { opacity: 1; transform: scale(1); }
+  /* state: done */
+  .cta.is-done .cta__label { opacity: 0; transform: translateY(-130%); }
+  .cta.is-done { background: linear-gradient(180deg, var(--success), hsl(158 64% 32%)); }
+  .cta.is-done .cta__done { opacity: 1; transform: scale(1); }
+  .cta.is-done .cta__done svg path {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: draw 360ms var(--ease-out) 60ms forwards;
+  }
+
+  .note {
+    margin: var(--space-4) 0 0;
+    text-align: center;
+    font-size: 0.8125rem;
+    color: var(--text-3);
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  /* price digit roll-in when value changes */
+  .amount.is-flip {
+    animation: flip var(--duration-base) var(--ease-out);
+  }
+  @keyframes flip {
+    0%   { opacity: 0.5; transform: translateY(6px); }
+    100% { opacity: 1;   transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+    .card:hover { transform: none; }
+    .cta:hover, .cta:active { transform: none; }
+    .cta__spinner svg { animation: spin 0.7s linear infinite; } /* keep spinner as the only meaningful loop */
+  }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="head">
+      <h2 class="plan">Pro</h2>
+      <span class="badge">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2.6l2.62 5.7 6.26.7-4.66 4.2 1.26 6.16L12 16.9l-5.74 2.46 1.26-6.16-4.66-4.2 6.26-.7z"/>
+        </svg>
+        Most popular
+      </span>
+    </div>
+
+    <div class="price-block">
+      <span class="currency">$</span>
+      <span class="amount" id="amount" aria-live="polite">24</span>
+      <span class="period">/month</span>
+    </div>
+
+    <p class="desc">Everything a growing team needs to ship, measure, and scale with confidence.</p>
+
+    <div class="billing">
+      <div class="seg" role="group" aria-label="Billing period">
+        <span class="seg__thumb" id="thumb"></span>
+        <button class="seg__opt" id="opt-month" aria-pressed="true">Monthly</button>
+        <button class="seg__opt" id="opt-year"  aria-pressed="false">Yearly</button>
+      </div>
+      <span class="save" id="save">Save 20%</span>
+    </div>
+
+    <hr class="rule" />
+
+    <ul class="features">
+      <li class="feature">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4 4 10-10.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        Unlimited projects and members
+      </li>
+      <li class="feature">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4 4 10-10.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        Advanced analytics and exports
+      </li>
+      <li class="feature">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4 4 10-10.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        Priority support, under 2 hours
+      </li>
+      <li class="feature">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4 4 10-10.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        Single sign-on and audit logs
+      </li>
+    </ul>
+
+    <button class="cta" id="cta" aria-label="Start free trial">
+      <span class="cta__label">
+        Start free trial
+        <svg class="cta__arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="cta__spinner" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.3)" stroke-width="2.6"/><path d="M12 3a9 9 0 0 1 9 9" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>
+      </span>
+      <span class="cta__done" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4 4 10-10.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </button>
+
+    <p class="note">No credit card required. Cancel anytime.</p>
+  </div>
+
+<script>
+  (function () {
+    var amount = document.getElementById('amount');
+    var optM   = document.getElementById('opt-month');
+    var optY   = document.getElementById('opt-year');
+    var thumb  = document.getElementById('thumb');
+    var save   = document.getElementById('save');
+    var cta    = document.getElementById('cta');
+
+    var PRICE = { month: 24, year: 19 };  // yearly billed shows effective monthly
+    var current = 'month';
+
+    function placeThumb(btn) {
+      // Thumb is absolutely positioned at left:3px; offset it to the button's edge.
+      thumb.style.width = btn.offsetWidth + 'px';
+      thumb.style.transform = 'translateX(' + (btn.offsetLeft - 3) + 'px)';
+    }
+
+    function setPeriod(period, btn) {
+      if (period === current) return;
+      current = period;
+
+      optM.setAttribute('aria-pressed', String(period === 'month'));
+      optY.setAttribute('aria-pressed', String(period === 'year'));
+      placeThumb(btn);
+      save.classList.toggle('is-on', period === 'year');
+
+      // update price with a subtle roll
+      var next = PRICE[period];
+      if (String(next) !== amount.textContent) {
+        amount.textContent = next;
+        amount.classList.remove('is-flip');
+        // force reflow to restart the animation
+        void amount.offsetWidth;
+        amount.classList.add('is-flip');
+      }
+    }
+
+    optM.addEventListener('click', function () { setPeriod('month', optM); });
+    optY.addEventListener('click', function () { setPeriod('year', optY); });
+
+    // place the thumb once layout is known
+    function init() { placeThumb(optM); }
+    if (document.readyState === 'complete') init();
+    else window.addEventListener('load', init);
+    window.addEventListener('resize', function () {
+      var active = current === 'month' ? optM : optY;
+      // disable transition during resize so it snaps
+      var prev = thumb.style.transition;
+      thumb.style.transition = 'none';
+      placeThumb(active);
+      void thumb.offsetWidth;
+      thumb.style.transition = prev;
+    });
+
+    // CTA: optimistic loading → success, with flicker-guarded minimum visible time
+    var busy = false;
+    cta.addEventListener('click', function () {
+      if (busy) return;
+      busy = true;
+      cta.disabled = true;
+      cta.setAttribute('aria-busy', 'true');
+
+      var started = Date.now();
+      cta.classList.add('is-loading');
+
+      // simulate a request; guarantee the spinner is visible long enough to not flicker
+      var MIN_VISIBLE = 600;
+      var work = 750 + Math.random() * 350;
+
+      setTimeout(function () {
+        var elapsed = Date.now() - started;
+        var wait = Math.max(0, MIN_VISIBLE - elapsed);
+        setTimeout(function () {
+          cta.classList.remove('is-loading');
+          cta.classList.add('is-done');
+          cta.setAttribute('aria-label', 'Trial started');
+          cta.removeAttribute('aria-busy');
+
+          // settle back to idle after a beat
+          setTimeout(function () {
+            cta.classList.remove('is-done');
+            cta.disabled = false;
+            cta.setAttribute('aria-label', 'Start free trial');
+            busy = false;
+          }, 1600);
+        }, wait);
+      }, work);
+    });
+  })();
+</script>
+</body>
+</html>

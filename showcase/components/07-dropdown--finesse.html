@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Options menu</title>
+<style>
+  :root {
+    /* ---- Motion tokens (shared contract) ---- */
+    --duration-fast:   150ms;  /* micro: hover, press, color, icon tint */
+    --duration-base:   200ms;  /* dropdown open */
+    --duration-slow:   300ms;  /* larger surfaces */
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* small in-place state changes */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* entering / decelerating */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* exiting / accelerating */
+
+    /* ---- Surface ---- */
+    --surface:        hsl(40 12% 98%);   /* near-white page */
+
+    /* ---- Neutrals (saturated, warm, never pure black) ---- */
+    --text-primary:   hsl(40 8% 12%);    /* near-black */
+    --text-secondary: hsl(40 6% 38%);
+    --text-tertiary:  hsl(40 5% 55%);
+    --icon:           hsl(40 5% 46%);
+
+    --menu-bg:        hsl(40 14% 99.5%);
+    --menu-border:    hsl(40 10% 88%);
+    --item-hover:     hsl(40 9% 95%);
+    --item-active:    hsl(40 10% 92%);
+    --divider:        hsl(40 8% 91%);
+
+    --btn-bg:         hsl(0 0% 100%);
+    --btn-bg-hover:   hsl(40 9% 97%);
+    --btn-bg-active:  hsl(40 9% 95%);
+    --btn-border:     hsl(40 9% 85%);
+    --btn-border-hover: hsl(40 9% 78%);
+
+    /* ---- Functional color: danger ---- */
+    --danger:         hsl(2 72% 50%);
+    --danger-text:    hsl(2 70% 44%);   /* darker for AA contrast on text */
+    --danger-hover-bg:hsl(2 68% 96%);
+    --danger-hover-text: hsl(2 72% 46%);
+
+    --ring:           hsl(217 90% 56%);
+
+    /* ---- Concentric radii ----
+       menu outer radius 14px; item padding gap 6px → inner item radius 8px (14 - 6).
+       button radius 10px. */
+    --radius-menu:    14px;
+    --radius-item:    8px;
+    --radius-btn:     10px;
+
+    /* layered, tinted (warm) shadow — light from above */
+    --shadow-menu:
+      0 0 0 1px hsl(40 10% 86% / 0.9),
+      0 1px 2px hsl(40 20% 20% / 0.06),
+      0 6px 12px -2px hsl(40 22% 22% / 0.10),
+      0 16px 28px -6px hsl(40 22% 22% / 0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+  }
+
+  body {
+    background: var(--surface);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    display: grid;
+    place-items: center;
+    padding: 48px 24px;
+    min-height: 100%;
+  }
+
+  .stage {
+    /* generous breathing room so the component reads as intentional */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* ============ Trigger button ============ */
+  .menu-trigger {
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 550;
+    letter-spacing: -0.006em;
+    color: var(--text-primary);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    border-radius: var(--radius-btn);
+    /* optical: less padding on the chevron (icon) side than the text side */
+    padding: 9px 12px 9px 15px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    user-select: none;
+    box-shadow:
+      0 1px 2px hsl(40 20% 20% / 0.05),
+      0 1px 0 hsl(0 0% 100% / 0.6) inset;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .menu-trigger:hover {
+      background: var(--btn-bg-hover);
+      border-color: var(--btn-border-hover);
+    }
+  }
+
+  .menu-trigger:active {
+    transform: scale(0.96);
+    background: var(--btn-bg-active);
+  }
+
+  .menu-trigger:focus { outline: none; }
+  .menu-trigger:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--ring),
+      0 1px 2px hsl(40 20% 20% / 0.05);
+  }
+
+  /* keep the button looking "engaged" while the menu is open */
+  .menu-trigger[aria-expanded="true"] {
+    background: var(--btn-bg-active);
+    border-color: var(--btn-border-hover);
+  }
+
+  .menu-trigger .chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--icon);
+    transition: transform var(--duration-base) var(--ease-standard);
+    transform-origin: 50% 50%;
+  }
+  .menu-trigger[aria-expanded="true"] .chevron {
+    transform: rotate(180deg);
+  }
+
+  /* ============ Menu surface ============ */
+  .menu-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
+  .menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 232px;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: var(--menu-bg);
+    border-radius: var(--radius-menu);
+    box-shadow: var(--shadow-menu);
+    z-index: 30;
+    /* grows from the trigger's top-left corner */
+    transform-origin: top left;
+
+    /* Default (and reduced-motion) state baked in; motion added below */
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      opacity var(--duration-fast) var(--ease-in),
+      transform var(--duration-fast) var(--ease-in),
+      visibility 0s linear var(--duration-fast);
+  }
+
+  .menu[data-open] {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
+    visibility: visible;
+    /* enter: decelerate, slightly longer than exit (200 vs 150) */
+    transition:
+      opacity var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out),
+      visibility 0s linear 0s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu {
+      transform: none;
+      transition:
+        opacity var(--duration-fast) linear,
+        visibility 0s linear var(--duration-fast);
+    }
+    .menu[data-open] {
+      transform: none;
+      transition:
+        opacity var(--duration-fast) linear,
+        visibility 0s linear 0s;
+    }
+    .menu-trigger .chevron { transition: none; }
+    .menu-trigger:active { transform: none; }
+  }
+
+  /* ============ Menu items ============ */
+  .menu-item {
+    position: relative;
+    appearance: none;
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 450;
+    line-height: 1;
+    letter-spacing: -0.006em;
+    color: var(--text-primary);
+    text-align: left;
+    padding: 0 9px 0 10px;
+    height: 34px;
+    border-radius: var(--radius-item);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .menu-item .mi-icon {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: var(--icon);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .menu-item .mi-label { flex: 1 1 auto; }
+
+  /* the trailing shortcut hint — tabular so it never shifts */
+  .menu-item .mi-shortcut {
+    flex: none;
+    font-size: 12px;
+    font-weight: 450;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* Roving focus / hover share one visual "active descendant" look.
+     Driven by [data-active] (keyboard) and :hover (pointer). */
+  @media (hover: hover) and (pointer: fine) {
+    .menu-item:hover { background: var(--item-hover); }
+    .menu-item:hover .mi-icon { color: var(--text-secondary); }
+  }
+  .menu-item[data-active] { background: var(--item-hover); }
+  .menu-item[data-active] .mi-icon { color: var(--text-secondary); }
+
+  .menu-item:active { background: var(--item-active); }
+
+  /* focus is managed via roving tabindex; suppress the native ring on the
+     items themselves and show it on the menu container instead is overkill —
+     instead each item gets a real focus-visible ring for direct tab/click focus */
+  .menu-item:focus { outline: none; }
+  .menu-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--menu-bg), 0 0 0 4px var(--ring);
+  }
+
+  /* Destructive item */
+  .menu-item--danger { color: var(--danger-text); }
+  .menu-item--danger .mi-icon { color: var(--danger); }
+  @media (hover: hover) and (pointer: fine) {
+    .menu-item--danger:hover { background: var(--danger-hover-bg); color: var(--danger-hover-text); }
+    .menu-item--danger:hover .mi-icon { color: var(--danger); }
+  }
+  .menu-item--danger[data-active] { background: var(--danger-hover-bg); color: var(--danger-hover-text); }
+  .menu-item--danger[data-active] .mi-icon { color: var(--danger); }
+  .menu-item--danger:active { background: hsl(2 60% 93%); }
+
+  /* Divider — a real border, not a shadow */
+  .menu-sep {
+    height: 1px;
+    margin: 5px 6px;
+    background: var(--divider);
+    border: none;
+  }
+
+  /* ============ Trigger-local confirmation toast (in-context) ============ */
+  .status-line {
+    height: 20px;
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 450;
+    color: var(--text-secondary);
+    opacity: 0;
+    transform: translateY(-3px);
+    transition:
+      opacity var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
+    pointer-events: none;
+  }
+  .status-line[data-show] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .status-line .sl-icon { width: 15px; height: 15px; flex: none; }
+  .status-line.is-success .sl-icon { color: hsl(145 55% 38%); }
+  .status-line.is-danger { color: var(--danger-text); }
+  .status-line.is-danger .sl-icon { color: var(--danger); }
+  .status-line .sl-label { font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .status-line { transform: none; transition: opacity var(--duration-fast) linear; }
+    .status-line[data-show] { transform: none; }
+  }
+
+  /* Forced colors: make essential boundaries paintable */
+  @media (forced-colors: active) {
+    .menu { border: 1px solid CanvasText; }
+    .menu-trigger { border: 1px solid ButtonText; }
+    .menu-trigger:focus-visible,
+    .menu-item:focus-visible { outline: 2px solid Highlight; }
+    .menu-item[data-active] { outline: 1px solid Highlight; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="menu-wrap">
+      <button
+        type="button"
+        class="menu-trigger"
+        id="optionsTrigger"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-controls="optionsMenu"
+      >
+        <span>Options</span>
+        <svg class="chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <ul class="menu" id="optionsMenu" role="menu" aria-labelledby="optionsTrigger" tabindex="-1">
+        <li role="none">
+          <button type="button" class="menu-item" role="menuitem" tabindex="-1" data-action="edit">
+            <svg class="mi-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M11.5 2.5l2 2M3 13l.5-2.2 7-7 1.7 1.7-7 7L3 13z"
+                    stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="mi-label">Edit</span>
+            <span class="mi-shortcut" aria-hidden="true">⌘E</span>
+          </button>
+        </li>
+        <li role="none">
+          <button type="button" class="menu-item" role="menuitem" tabindex="-1" data-action="duplicate">
+            <svg class="mi-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="5.5" y="5.5" width="8" height="8" rx="2"
+                    stroke="currentColor" stroke-width="1.4"/>
+              <path d="M10.5 5.5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4.5a2 2 0 0 0 2 2h1.5"
+                    stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="mi-label">Duplicate</span>
+            <span class="mi-shortcut" aria-hidden="true">⌘D</span>
+          </button>
+        </li>
+        <li role="none">
+          <button type="button" class="menu-item" role="menuitem" tabindex="-1" data-action="share">
+            <svg class="mi-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 10.5V2.5M8 2.5L5.2 5.3M8 2.5l2.8 2.8"
+                    stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M3.5 8.5v3a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5v-3"
+                    stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="mi-label">Share</span>
+          </button>
+        </li>
+
+        <li role="none"><hr class="menu-sep" role="separator" /></li>
+
+        <li role="none">
+          <button type="button" class="menu-item" role="menuitem" tabindex="-1" data-action="rename">
+            <svg class="mi-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 3.5H4A1.5 1.5 0 0 0 2.5 5v6A1.5 1.5 0 0 0 4 12.5h6A1.5 1.5 0 0 0 11.5 11V7"
+                    stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M10.6 2.6l1.8 1.8-5 5L5 9.8l.4-2.4 5.2-4.8z"
+                    stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="mi-label">Rename</span>
+          </button>
+        </li>
+        <li role="none">
+          <button type="button" class="menu-item menu-item--danger" role="menuitem" tabindex="-1" data-action="delete">
+            <svg class="mi-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 4.5h10M6.5 4.5V3.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1M5 4.5l.5 7.5a1 1 0 0 0 1 .95h3a1 1 0 0 0 1-.95L11 4.5"
+                    stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="mi-label">Delete</span>
+            <span class="mi-shortcut" aria-hidden="true">⌫</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Trigger-local feedback: in-context, near the control, never a corner toast -->
+    <div class="status-line" id="statusLine" role="status" aria-live="polite" aria-atomic="true">
+      <svg class="sl-icon" id="statusIcon" viewBox="0 0 16 16" fill="none" aria-hidden="true"></svg>
+      <span class="sl-label" id="statusLabel"></span>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    var trigger = document.getElementById("optionsTrigger");
+    var menu    = document.getElementById("optionsMenu");
+    var wrap    = menu.parentElement;
+    var items   = Array.prototype.slice.call(menu.querySelectorAll(".menu-item"));
+
+    var statusLine  = document.getElementById("statusLine");
+    var statusIcon  = document.getElementById("statusIcon");
+    var statusLabel = document.getElementById("statusLabel");
+
+    var isOpen = false;
+    var activeIndex = -1;
+    var statusTimer = null;
+
+    var ICONS = {
+      check: '<path d="M3.5 8.5l3 3 6-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+      trash: '<path d="M3 4.5h10M5 4.5l.5 7.5a1 1 0 0 0 1 .95h3a1 1 0 0 0 1-.95L11 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    };
+
+    /* ---------------- open / close ---------------- */
+
+    function openMenu(focusFirst) {
+      if (isOpen) return;
+      isOpen = true;
+      menu.setAttribute("data-open", "");
+      trigger.setAttribute("aria-expanded", "true");
+
+      // listeners deferred so the opening interaction doesn't immediately close it
+      window.setTimeout(function () {
+        document.addEventListener("pointerdown", onPointerDownOutside, true);
+      }, 0);
+      document.addEventListener("keydown", onMenuKeydown, true);
+
+      if (focusFirst === "first") setActive(0, true);
+      else if (focusFirst === "last") setActive(items.length - 1, true);
+      else setActive(-1, false);
+    }
+
+    function closeMenu(restoreFocus) {
+      if (!isOpen) return;
+      isOpen = false;
+      menu.removeAttribute("data-open");
+      trigger.setAttribute("aria-expanded", "false");
+      clearActive();
+
+      document.removeEventListener("pointerdown", onPointerDownOutside, true);
+      document.removeEventListener("keydown", onMenuKeydown, true);
+
+      if (restoreFocus !== false) trigger.focus();
+    }
+
+    function onPointerDownOutside(e) {
+      if (!wrap.contains(e.target)) closeMenu(false);
+    }
+
+    /* ---------------- roving active descendant ---------------- */
+
+    function clearActive() {
+      items.forEach(function (it) { it.removeAttribute("data-active"); });
+      activeIndex = -1;
+      menu.removeAttribute("aria-activedescendant");
+    }
+
+    function setActive(index, doFocus) {
+      items.forEach(function (it) { it.removeAttribute("data-active"); });
+      activeIndex = index;
+      if (index < 0) return;
+      var el = items[index];
+      el.setAttribute("data-active", "");
+      if (!el.id) el.id = "mi-" + index;
+      menu.setAttribute("aria-activedescendant", el.id);
+      if (doFocus) {
+        el.focus({ preventScroll: true });
+      }
+    }
+
+    function moveActive(delta) {
+      if (items.length === 0) return;
+      var next;
+      if (activeIndex === -1) {
+        next = delta > 0 ? 0 : items.length - 1;
+      } else {
+        next = (activeIndex + delta + items.length) % items.length;
+      }
+      setActive(next, true);
+    }
+
+    /* ---------------- keyboard ---------------- */
+
+    function onTriggerKeydown(e) {
+      switch (e.key) {
+        case "ArrowDown":
+        case "Down":
+          e.preventDefault();
+          openMenu("first");
+          break;
+        case "ArrowUp":
+        case "Up":
+          e.preventDefault();
+          openMenu("last");
+          break;
+        case "Enter":
+        case " ":
+        case "Spacebar":
+          e.preventDefault();
+          if (isOpen) closeMenu(); else openMenu("first");
+          break;
+      }
+    }
+
+    function onMenuKeydown(e) {
+      if (!isOpen) return;
+      switch (e.key) {
+        case "Escape":
+        case "Esc":
+          e.preventDefault();
+          e.stopPropagation();
+          closeMenu(true);
+          break;
+        case "ArrowDown":
+        case "Down":
+          e.preventDefault();
+          moveActive(1);
+          break;
+        case "ArrowUp":
+        case "Up":
+          e.preventDefault();
+          moveActive(-1);
+          break;
+        case "Home":
+          e.preventDefault();
+          setActive(0, true);
+          break;
+        case "End":
+          e.preventDefault();
+          setActive(items.length - 1, true);
+          break;
+        case "Tab":
+          // Tab closes the menu (and lets focus move naturally)
+          closeMenu(false);
+          break;
+        case "Enter":
+        case " ":
+        case "Spacebar":
+          if (activeIndex >= 0) {
+            e.preventDefault();
+            activate(items[activeIndex]);
+          }
+          break;
+      }
+    }
+
+    /* ---------------- activation ---------------- */
+
+    var ACTION_LABELS = {
+      edit:      "Editing",
+      duplicate: "Duplicated",
+      share:     "Share link copied",
+      rename:    "Renaming",
+      "delete":  "Deleted"
+    };
+
+    function activate(item) {
+      var action = item.getAttribute("data-action");
+      var label  = ACTION_LABELS[action] || "Done";
+      var danger = action === "delete";
+
+      closeMenu(true);
+      // surface trigger-local confirmation after the menu has begun closing
+      showStatus(label, danger);
+    }
+
+    function showStatus(text, danger) {
+      window.clearTimeout(statusTimer);
+      statusLabel.textContent = text;
+      statusIcon.innerHTML = danger ? ICONS.trash : ICONS.check;
+      statusLine.classList.toggle("is-danger", !!danger);
+      statusLine.classList.toggle("is-success", !danger);
+      statusLine.setAttribute("data-show", "");
+      statusTimer = window.setTimeout(function () {
+        statusLine.removeAttribute("data-show");
+      }, 2200);
+    }
+
+    /* ---------------- wiring ---------------- */
+
+    // Open on pointerdown for instant, "already-there" feel (safe, reversible).
+    trigger.addEventListener("pointerdown", function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault(); // avoid focus-steal / text selection flicker
+      trigger.focus();
+      if (isOpen) closeMenu(false); else openMenu(null);
+    });
+
+    // Keyboard activation of the trigger (Enter/Space/Arrows). pointerdown
+    // already handled the mouse path, so guard against double-fire on click.
+    trigger.addEventListener("keydown", onTriggerKeydown);
+
+    // Each item: pointer hover syncs the roving highlight so keyboard + mouse
+    // never disagree about which row is "active".
+    items.forEach(function (item, i) {
+      item.addEventListener("pointermove", function () {
+        if (activeIndex !== i) setActive(i, false);
+      });
+      item.addEventListener("pointerleave", function () {
+        if (activeIndex === i) {
+          item.removeAttribute("data-active");
+          activeIndex = -1;
+          menu.removeAttribute("aria-activedescendant");
+        }
+      });
+      // Destructive vs safe: native click fires on release, which is correct
+      // for everything here (lets the user slide off Delete to cancel).
+      item.addEventListener("click", function (e) {
+        e.preventDefault();
+        activate(item);
+      });
+    });
+
+    // Prevent the menu's own pointerdown from bubbling to the outside-close
+    // handler (it's capture-phase on document).
+    menu.addEventListener("pointerdown", function (e) {
+      e.stopPropagation();
+    });
+  })();
+  </script>
+</body>
+</html>

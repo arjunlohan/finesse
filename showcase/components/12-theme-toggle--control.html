@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Theme switch</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --dur: 620ms;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 36px 24px;
+    /* Stage background sits behind the floating card */
+    background: #e9eaf0;
+    transition: background var(--dur) var(--ease-out);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body.dark {
+    background: #0c0d12;
+  }
+
+  /* ============ CARD ============ */
+  .card {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    border-radius: 24px;
+    padding: 30px 28px 28px;
+    isolation: isolate;
+    overflow: hidden;
+
+    /* Light theme tokens (defaults) */
+    --surface: #ffffff;
+    --surface-soft: #f5f6fa;
+    --text-strong: #15161c;
+    --text-soft: #5b5e6e;
+    --text-faint: #8a8da0;
+    --line: rgba(20, 22, 35, 0.08);
+    --line-strong: rgba(20, 22, 35, 0.12);
+    --accent: #5b5bf0;
+    --accent-soft: #eeeefe;
+    --accent-text: #4a45d6;
+    --on-accent: #ffffff;
+    --shadow: 0 1px 1px rgba(20,22,40,0.04), 0 8px 18px -8px rgba(20,22,40,0.16), 0 24px 48px -20px rgba(20,22,40,0.22);
+    --glow: radial-gradient(120% 90% at 80% -10%, rgba(91,91,240,0.10), transparent 60%);
+
+    background: var(--surface);
+    color: var(--text-soft);
+    box-shadow: var(--shadow);
+
+    transition:
+      background var(--dur) var(--ease-out),
+      color var(--dur) var(--ease-out),
+      box-shadow var(--dur) var(--ease-out);
+  }
+
+  body.dark .card {
+    --surface: #16181f;
+    --surface-soft: #20232d;
+    --text-strong: #f3f4fa;
+    --text-soft: #a3a7ba;
+    --text-faint: #6f7488;
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.12);
+    --accent: #8d8cff;
+    --accent-soft: #23253a;
+    --accent-text: #b4b3ff;
+    --on-accent: #14151c;
+    --shadow: 0 1px 1px rgba(0,0,0,0.4), 0 10px 24px -10px rgba(0,0,0,0.6), 0 28px 60px -24px rgba(0,0,0,0.8);
+    --glow: radial-gradient(120% 90% at 80% -10%, rgba(141,140,255,0.16), transparent 60%);
+  }
+
+  /* Ambient glow layer */
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--glow);
+    opacity: 1;
+    pointer-events: none;
+    z-index: 0;
+    transition: background var(--dur) var(--ease-out);
+  }
+
+  .card > * { position: relative; z-index: 1; }
+
+  /* ============ HEADER ROW ============ */
+  .top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    flex: none;
+    transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+  }
+  .brand-mark svg { width: 20px; height: 20px; display: block; }
+
+  .brand-meta { display: flex; flex-direction: column; gap: 2px; }
+  .brand-name {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-strong);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .brand-sub {
+    font-size: 12px;
+    color: var(--text-faint);
+    transition: color var(--dur) var(--ease-out);
+  }
+
+  /* ============ THEME SWITCH ============ */
+  .switch {
+    position: relative;
+    width: 60px;
+    height: 32px;
+    border-radius: 999px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    flex: none;
+    background: #dfe1ec;
+    -webkit-tap-highlight-color: transparent;
+    transition: background var(--dur) var(--ease-out), box-shadow 200ms ease;
+    box-shadow: inset 0 0 0 1px rgba(20,22,40,0.04), inset 0 2px 4px rgba(20,22,40,0.10);
+  }
+  body.dark .switch {
+    background: #2c2f3d;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 2px 5px rgba(0,0,0,0.5);
+  }
+  .switch:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 4.5px var(--accent), inset 0 2px 4px rgba(20,22,40,0.10);
+  }
+
+  /* Tiny ambient stars/sun-rays etched in the track */
+  .switch-icons {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .switch-icons svg { position: absolute; top: 50%; transform: translateY(-50%); }
+  .ic-sun {
+    left: 8px;
+    color: #f0a429;
+    opacity: 1;
+    transition: opacity var(--dur) var(--ease-out), transform 200ms ease;
+  }
+  .ic-moon {
+    right: 8px;
+    color: #c8cae0;
+    opacity: 0.45;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  body.dark .ic-sun { opacity: 0.35; }
+  body.dark .ic-moon { opacity: 1; color: #cdd0ff; }
+
+  .knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(20,22,40,0.2), 0 2px 6px rgba(20,22,40,0.2);
+    display: grid;
+    place-items: center;
+    transform: translateX(0);
+    transition: transform var(--dur) var(--ease-spring), background var(--dur) var(--ease-out);
+    z-index: 1;
+  }
+  body.dark .knob {
+    transform: translateX(28px);
+    background: #f4f5ff;
+  }
+  .knob .knob-icon {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    transition: opacity 300ms var(--ease-out), transform 420ms var(--ease-spring);
+  }
+  .knob .sun { color: #f0a429; opacity: 1; transform: rotate(0deg) scale(1); }
+  .knob .moon { color: #3a3d72; opacity: 0; transform: rotate(-90deg) scale(0.4); }
+  body.dark .knob .sun { opacity: 0; transform: rotate(90deg) scale(0.4); }
+  body.dark .knob .moon { opacity: 1; transform: rotate(0deg) scale(1); }
+  .knob svg { width: 15px; height: 15px; display: block; }
+
+  /* ============ BODY CONTENT ============ */
+  .heading {
+    font-size: 21px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+    margin: 0 0 9px;
+    transition: color var(--dur) var(--ease-out);
+  }
+  .blurb {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-soft);
+    margin: 0 0 22px;
+    transition: color var(--dur) var(--ease-out);
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .btn {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    border-radius: 12px;
+    padding: 11px 18px;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 200ms ease, color var(--dur) var(--ease-out), transform 120ms ease, box-shadow 200ms ease;
+  }
+  .btn svg { width: 16px; height: 16px; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 6px 16px -6px var(--accent);
+    flex: 1;
+    justify-content: center;
+  }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-primary:active { transform: scale(0.975); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-soft);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  .btn-ghost:hover { background: var(--surface-soft); color: var(--text-strong); }
+  .btn-ghost:active { transform: scale(0.975); }
+
+  /* ============ SETTINGS ROW ============ */
+  .setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--surface-soft);
+    transition: background var(--dur) var(--ease-out);
+  }
+  .setting-label {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+  .setting-ico {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    color: var(--text-soft);
+    box-shadow: inset 0 0 0 1px var(--line);
+    flex: none;
+    transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+  }
+  .setting-ico svg { width: 16px; height: 16px; }
+  .setting-text { display: flex; flex-direction: column; gap: 1px; }
+  .setting-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-strong);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .setting-desc {
+    font-size: 12px;
+    color: var(--text-faint);
+    transition: color var(--dur) var(--ease-out);
+  }
+
+  /* small pill toggle (the "settings toggle") */
+  .toggle {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    flex: none;
+    background: var(--line-strong);
+    -webkit-tap-highlight-color: transparent;
+    transition: background 260ms var(--ease-out);
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 4.5px var(--accent);
+  }
+  .toggle-dot {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    transition: transform 320ms var(--ease-spring);
+  }
+  .toggle.on .toggle-dot { transform: translateX(18px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 60ms !important; }
+  }
+</style>
+</head>
+<body>
+  <main class="card" role="group" aria-label="Appearance preview card">
+    <div class="top">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 3 7v10l9 5 9-5V7z"/>
+            <path d="M3 7l9 5 9-5"/>
+            <path d="M12 22V12"/>
+          </svg>
+        </div>
+        <div class="brand-meta">
+          <span class="brand-name">Workspace</span>
+          <span class="brand-sub">Appearance</span>
+        </div>
+      </div>
+
+      <button class="switch" id="themeSwitch" role="switch" aria-checked="false" aria-label="Toggle dark theme">
+        <span class="switch-icons" aria-hidden="true">
+          <svg class="ic-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+          </svg>
+          <svg class="ic-moon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+          </svg>
+        </span>
+        <span class="knob" aria-hidden="true">
+          <span class="knob-icon sun">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4.2"/>
+              <path d="M12 1.5v2.4M12 20.1v2.4M3.6 3.6l1.7 1.7M18.7 18.7l1.7 1.7M1.5 12h2.4M20.1 12h2.4M3.6 20.4l1.7-1.7M18.7 5.3l1.7-1.7"/>
+            </svg>
+          </span>
+          <span class="knob-icon moon">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+            </svg>
+          </span>
+        </span>
+      </button>
+    </div>
+
+    <h1 class="heading">You're all set up</h1>
+    <p class="blurb">Your preferences sync across every device. Pick a theme that feels right — the whole panel follows along.</p>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="continueBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        Continue
+      </button>
+      <button class="btn btn-ghost" id="laterBtn" type="button">Not now</button>
+    </div>
+
+    <div class="setting">
+      <div class="setting-label">
+        <span class="setting-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16v12H4zM2 20h20M9 8h6M9 12h3"/>
+          </svg>
+        </span>
+        <span class="setting-text">
+          <span class="setting-title">Reduce motion</span>
+          <span class="setting-desc">Calmer transitions</span>
+        </span>
+      </div>
+      <button class="toggle" id="settingToggle" role="switch" aria-checked="false" aria-label="Reduce motion">
+        <span class="toggle-dot"></span>
+      </button>
+    </div>
+  </main>
+
+<script>
+  (function () {
+    var body = document.body;
+    var sw = document.getElementById('themeSwitch');
+    var setToggle = document.getElementById('settingToggle');
+
+    function setTheme(dark) {
+      body.classList.toggle('dark', dark);
+      sw.setAttribute('aria-checked', dark ? 'true' : 'false');
+    }
+
+    sw.addEventListener('click', function () {
+      setTheme(!body.classList.contains('dark'));
+    });
+
+    setToggle.addEventListener('click', function () {
+      var on = setToggle.classList.toggle('on');
+      setToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+
+    // Ripple-free press feedback for ghost button "Not now" -> just blur
+    document.getElementById('laterBtn').addEventListener('click', function (e) { e.currentTarget.blur(); });
+    document.getElementById('continueBtn').addEventListener('click', function (e) { e.currentTarget.blur(); });
+  })();
+</script>
+</body>
+</html>

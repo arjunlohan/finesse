@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>finesse — the same prompt, with and without the craft</title>
+<meta name="description" content="We gave Opus 4.8 the same prompt fifteen times. The only thing that changed was whether it read the finesse skill first. Here is what changed." />
+<style>
+  :root {
+    --d-instant: 0ms;  --d-fast: 150ms; --d-base: 200ms; --d-slow: 300ms; --d-slower: 450ms;
+    --e-standard: cubic-bezier(0.2, 0, 0, 1);
+    --e-out:      cubic-bezier(0.05, 0.7, 0.1, 1);
+    --e-in:       cubic-bezier(0.3, 0, 0.8, 0.15);
+    --e-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
+
+    --bg:        hsl(240 7% 6%);
+    --surface-1: hsl(240 6% 8.5%);
+    --surface-2: hsl(240 6% 11%);
+    --surface-3: hsl(240 6% 14%);
+    --text-1: hsl(240 12% 96%);
+    --text-2: hsl(240 7% 66%);
+    --text-3: hsl(240 6% 47%);
+    --accent: hsl(212 100% 62%);
+    --accent-soft: hsl(212 100% 62% / 0.12);
+    --accent-ring: hsl(212 100% 62% / 0.5);
+    --ok: hsl(150 65% 52%);
+    --hair: hsl(240 8% 100% / 0.08);
+    --hair-2: hsl(240 8% 100% / 0.06);
+
+    --ring: inset 0 0 0 1px hsl(0 0% 100% / 0.08);
+    --ring-hover: inset 0 0 0 1px hsl(0 0% 100% / 0.14);
+    --lift: 0 1px 0 0 hsl(0 0% 100% / 0.04), 0 20px 50px -28px hsl(240 50% 2% / 0.9);
+
+    --r-xl: 22px; --r-lg: 16px; --r-md: 12px; --r-sm: 9px; --r-pill: 999px;
+
+    --maxw: 1140px;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background: var(--bg);
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text-1);
+    background:
+      radial-gradient(120% 80% at 50% -10%, hsl(212 90% 20% / 0.18), transparent 60%),
+      radial-gradient(80% 50% at 85% 8%, hsl(265 80% 30% / 0.10), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.08; letter-spacing: -0.022em; }
+  p { text-wrap: pretty; margin: 0; }
+  a { color: inherit; }
+  ::selection { background: var(--accent-soft); color: var(--text-1); }
+
+  .wrap { max-width: var(--maxw); margin-inline: auto; padding-inline: 24px; }
+  .mono { font-family: var(--mono); }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  :where(a, button, summary, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-ring);
+    border-radius: var(--r-sm);
+  }
+
+  /* nav */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: saturate(140%) blur(14px);
+    background: hsl(240 7% 6% / 0.72);
+    border-bottom: 1px solid var(--hair-2);
+  }
+  .nav__in { display: flex; align-items: center; gap: 16px; height: 58px; }
+  .brand { font-weight: 680; letter-spacing: -0.03em; font-size: 16px; display: inline-flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 9px; height: 9px; border-radius: var(--r-pill); background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .nav__spacer { flex: 1; }
+  .nav__links { display: flex; align-items: center; gap: 4px; }
+  .nav__link {
+    text-decoration: none; color: var(--text-2); font-size: 13.5px; font-weight: 520;
+    padding: 8px 12px; border-radius: var(--r-sm);
+    transition: color var(--d-fast) var(--e-standard), background-color var(--d-fast) var(--e-standard);
+  }
+  @media (hover: hover) and (pointer: fine) { .nav__link:hover { color: var(--text-1); background: var(--surface-2); } }
+  .nav__link--ghost { color: var(--text-3); }
+  @media (max-width: 720px) { .nav__link--hide { display: none; } }
+
+  /* hero */
+  .hero { padding: clamp(64px, 12vh, 132px) 0 clamp(40px, 7vh, 76px); position: relative; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11.5px; font-weight: 640; color: var(--text-3); margin-bottom: 22px; }
+  .hero h1 { font-size: clamp(2.6rem, 6.4vw, 4.7rem); font-weight: 660; max-width: 16ch; }
+  .hero h1 .grad { background: linear-gradient(180deg, var(--text-1), hsl(240 8% 62%)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero__sub { margin-top: 26px; max-width: 60ch; font-size: clamp(1rem, 1.5vw, 1.18rem); color: var(--text-2); }
+  .hero__sub b { color: var(--text-1); font-weight: 600; }
+  .hero__cta { margin-top: 38px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+
+  .install {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--surface-2); box-shadow: var(--ring);
+    border-radius: var(--r-md); padding: 11px 11px 11px 16px;
+    font-family: var(--mono); font-size: 14px; color: var(--text-1);
+    transition: box-shadow var(--d-fast) var(--e-out);
+  }
+  @media (hover: hover) and (pointer: fine) { .install:hover { box-shadow: var(--ring-hover); } }
+  .install .sigil { color: var(--text-3); }
+  .install__btn {
+    appearance: none; border: 0; cursor: pointer; color: var(--text-2);
+    background: var(--surface-3); border-radius: var(--r-sm);
+    width: 34px; height: 34px; display: inline-grid; place-items: center;
+    transition: transform var(--d-fast) var(--e-standard), color var(--d-fast) var(--e-standard), background-color var(--d-fast) var(--e-standard);
+    position: relative;
+  }
+  .install__btn::after { content: ""; position: absolute; inset: -7px; }
+  @media (hover: hover) and (pointer: fine) { .install__btn:hover { color: var(--text-1); background: hsl(240 6% 18%); } }
+  .install__btn:active { transform: scale(0.94); }
+  .install__btn[data-copied="true"] { color: var(--ok); }
+  .install__btn .ic { grid-area: 1 / 1; display: grid; place-items: center; transition: opacity var(--d-slow) var(--e-standard), transform var(--d-slow) var(--e-standard); }
+  .install__btn .ic--check { opacity: 0; transform: scale(0.6); }
+  .install__btn[data-copied="true"] .ic--copy { opacity: 0; transform: scale(0.6); }
+  .install__btn[data-copied="true"] .ic--check { opacity: 1; transform: scale(1); }
+
+  .pill-link {
+    text-decoration: none; font-size: 14px; font-weight: 560; color: var(--text-2);
+    display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px;
+    border-radius: var(--r-md); box-shadow: var(--ring);
+    transition: color var(--d-fast) var(--e-standard), box-shadow var(--d-fast) var(--e-out), transform var(--d-fast) var(--e-standard);
+  }
+  @media (hover: hover) and (pointer: fine) { .pill-link:hover { color: var(--text-1); box-shadow: var(--ring-hover); } }
+  .pill-link:active { transform: scale(0.97); }
+
+  /* method strip */
+  .method { padding: 20px 0 8px; }
+  .method__card {
+    background: linear-gradient(180deg, var(--surface-1), hsl(240 6% 7%));
+    box-shadow: var(--ring); border-radius: var(--r-lg);
+    padding: 24px 26px; display: grid; gap: 18px; grid-template-columns: 1fr; align-items: start;
+  }
+  @media (min-width: 860px) { .method__card { grid-template-columns: auto 1fr; gap: 34px; } }
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; }
+  .legend__item { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 560; white-space: nowrap; }
+  .badge { width: 26px; height: 26px; border-radius: var(--r-pill); display: grid; place-items: center; flex: none; }
+  .badge--x { background: var(--surface-3); color: var(--text-2); box-shadow: var(--ring); }
+  .badge--check { background: var(--accent); color: white; }
+  .method__note { color: var(--text-2); font-size: 14.5px; max-width: 64ch; }
+  .method__note b { color: var(--text-1); font-weight: 600; }
+
+  /* comparisons */
+  #comparisons { padding: 56px 0 40px; display: grid; gap: clamp(56px, 8vh, 104px); }
+  .cmp { scroll-margin-top: 78px; }
+  .cmp__head { max-width: 74ch; margin-bottom: 26px; }
+  .cmp__meta { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .cmp__idx { font-family: var(--mono); font-size: 12.5px; color: var(--text-3); letter-spacing: 0.02em; }
+  .cmp__cat { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 640; color: var(--accent); padding: 4px 10px; border-radius: var(--r-pill); background: var(--accent-soft); }
+  .cmp__hr { flex: 1; height: 1px; background: var(--hair-2); }
+  .cmp h2 { font-size: clamp(1.5rem, 3vw, 2.05rem); font-weight: 620; }
+  .cmp__tell { margin-top: 14px; font-size: clamp(1rem, 1.5vw, 1.12rem); color: var(--text-2); }
+  .cmp__tell b { color: var(--text-1); font-weight: 600; }
+
+  .cmp__prompt { margin-top: 18px; font-size: 13px; color: var(--text-3); }
+  .cmp__prompt summary {
+    cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 8px;
+    color: var(--text-3); font-weight: 540; user-select: none; width: max-content;
+    transition: color var(--d-fast) var(--e-standard);
+  }
+  .cmp__prompt summary::-webkit-details-marker { display: none; }
+  @media (hover: hover) and (pointer: fine) { .cmp__prompt summary:hover { color: var(--text-2); } }
+  .cmp__prompt summary .tw { transition: transform var(--d-base) var(--e-standard); }
+  .cmp__prompt[open] summary .tw { transform: rotate(90deg); }
+  .cmp__prompt p {
+    margin-top: 12px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; color: var(--text-2);
+    background: var(--surface-1); box-shadow: var(--ring); border-radius: var(--r-md);
+    padding: 14px 16px; max-width: 80ch;
+  }
+
+  .stage { display: grid; gap: 18px; grid-template-columns: 1fr; }
+  @media (min-width: 1000px) { .stage { grid-template-columns: 1fr 1fr; gap: 22px; } }
+
+  .frame { display: flex; flex-direction: column; min-width: 0; }
+  .frame__bar { display: flex; align-items: center; gap: 10px; padding: 0 4px 12px; }
+  .frame__tag { display: inline-flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 580; }
+  .frame__tag .badge { width: 22px; height: 22px; }
+  .frame--ctrl .frame__tag { color: var(--text-2); }
+  .frame--fin .frame__tag { color: var(--text-1); }
+
+  .frame__screen {
+    position: relative; border-radius: var(--r-lg); overflow: hidden;
+    box-shadow: var(--ring), var(--lift); background: var(--surface-2);
+    transition: box-shadow var(--d-base) var(--e-out);
+  }
+  .frame--fin .frame__screen { box-shadow: inset 0 0 0 1px var(--accent-ring), 0 1px 0 0 hsl(0 0% 100% / 0.04), 0 26px 60px -30px hsl(212 80% 30% / 0.55); }
+  .frame__screen iframe { display: block; width: 100%; border: 0; background: transparent; }
+
+  .cmp__actions { margin-top: 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .replay {
+    appearance: none; border: 0; cursor: pointer; font-family: var(--font);
+    font-size: 13px; font-weight: 560; color: var(--text-2);
+    background: var(--surface-2); box-shadow: var(--ring); border-radius: var(--r-md);
+    padding: 9px 15px 9px 13px; display: inline-flex; align-items: center; gap: 8px;
+    transition: color var(--d-fast) var(--e-standard), box-shadow var(--d-fast) var(--e-out), transform var(--d-fast) var(--e-standard);
+  }
+  @media (hover: hover) and (pointer: fine) { .replay:hover { color: var(--text-1); box-shadow: var(--ring-hover); } }
+  .replay:active { transform: scale(0.97); }
+  .replay svg { transition: transform var(--d-slow) var(--e-out); }
+  .replay[data-spin="true"] svg { transform: rotate(-360deg); }
+  .try-hint { font-size: 13.5px; color: var(--text-3); }
+  .try-hint b { color: var(--accent); font-weight: 600; }
+
+  /* outro */
+  .outro { padding: clamp(60px, 9vh, 110px) 0 40px; }
+  .outro__card {
+    background: linear-gradient(180deg, var(--surface-1), hsl(240 6% 7%));
+    box-shadow: var(--ring); border-radius: var(--r-xl); padding: clamp(30px, 5vw, 54px); text-align: center;
+  }
+  .outro h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); font-weight: 640; max-width: 20ch; margin-inline: auto; }
+  .outro p { margin-top: 18px; color: var(--text-2); max-width: 58ch; margin-inline: auto; font-size: 1.05rem; }
+  .outro__cta { margin-top: 32px; display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; }
+
+  .foot { padding: 50px 0 80px; color: var(--text-3); font-size: 13px; }
+  .foot__in { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: baseline; justify-content: space-between; border-top: 1px solid var(--hair-2); padding-top: 28px; }
+  .foot a { color: var(--text-2); text-decoration: none; transition: color var(--d-fast) var(--e-standard); }
+  @media (hover: hover) and (pointer: fine) { .foot a:hover { color: var(--text-1); } }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html.js .reveal { opacity: 0; transform: translateY(14px); transition: opacity var(--d-slow) var(--e-out), transform var(--d-slow) var(--e-out); }
+    html.js .reveal.in { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav__in">
+    <span class="brand"><span class="dot"></span>finesse</span>
+    <span class="nav__spacer"></span>
+    <nav class="nav__links">
+      <a class="nav__link nav__link--hide" href="#comparisons">The experiment</a>
+      <a class="nav__link nav__link--ghost" href="https://github.com/arjunlohan/finesse" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">A design-engineering skill for AI coding assistants</p>
+      <h1><span class="grad">The same prompt.<br>One read the craft.</span></h1>
+      <p class="hero__sub">
+        <b>finesse</b> teaches your coding agent the invisible details that make interfaces feel polished, fast, and physical.
+        To show what that is worth, we gave <b>Opus 4.8</b> the same prompt fifteen times. The only thing that changed
+        was whether it read finesse first.
+      </p>
+
+      <div class="hero__cta">
+        <div class="install" id="install">
+          <span class="sigil">$</span>
+          <span class="mono" id="install-cmd">npx skills add arjunlohan/finesse</span>
+          <button class="install__btn" id="copy-btn" type="button" aria-label="Copy install command">
+            <span class="ic ic--copy" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg>
+            </span>
+            <span class="ic ic--check" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </span>
+          </button>
+        </div>
+        <a class="pill-link" href="#comparisons">
+          See the comparisons
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="method">
+    <div class="wrap">
+      <div class="method__card reveal">
+        <div class="legend">
+          <div class="legend__item">
+            <span class="badge badge--x" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </span>
+            Opus 4.8
+          </div>
+          <div class="legend__item">
+            <span class="badge badge--check" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </span>
+            Opus 4.8 + /finesse
+          </div>
+        </div>
+        <p class="method__note">
+          Each pair below is the <b>same component, built twice</b>. Same model, same prompt, same effort.
+          Hover, click, and spam both. Most of the difference is <b>felt, not seen</b>.
+          And the honest part. Opus 4.8 on its own is already <b>good</b>. finesse is the refinement that compounds:
+          the easing that leaves a touch faster than it arrives, the loader that knows not to flash, the state the baseline forgot.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div id="comparisons"></div>
+  </div>
+
+  <section class="outro">
+    <div class="wrap">
+      <div class="outro__card reveal">
+        <h2>Felt, not seen.</h2>
+        <p>
+          Great interfaces are an accumulation of small, individually invisible details that compound.
+          finesse packages them as committed defaults. Motion, interaction states, surfaces, typography,
+          performance, and accessibility, so your agent reaches for them without being asked.
+        </p>
+        <div class="outro__cta">
+          <a class="pill-link" href="https://github.com/arjunlohan/finesse" target="_blank" rel="noopener" style="box-shadow: inset 0 0 0 1px var(--accent-ring); color: var(--text-1);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49v-1.7c-2.78.62-3.37-1.22-3.37-1.22-.46-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.36 1.11 2.94.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05a9.4 9.4 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.92-2.34 4.78-4.57 5.04.36.32.68.94.68 1.9v2.81c0 .27.18.6.69.49A10.26 10.26 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z"/></svg>
+            Get finesse on GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="wrap foot__in">
+      <p>All fifteen experiments live in <span class="mono" style="color:var(--text-2)">showcase/components/</span>.</p>
+      <p>MIT &copy; Arjun Lohan &nbsp;·&nbsp; <a href="https://github.com/arjunlohan/finesse" target="_blank" rel="noopener">arjunlohan/finesse</a></p>
+    </div>
+  </footer>
+</main>
+
+<script type="application/json" id="cmp-data">
+[
+  { "file":"09-modal", "cat":"Motion + a11y", "h":470,
+    "headline":"A modal that confirms before it closes",
+    "tell":"Open and close it a few times. One leaves exactly as slowly as it arrives. The other exits a tier faster, and turns the button into a spinner, then a check, right where you clicked.",
+    "try":"open and close a few times, then click the danger button and watch the button",
+    "prompt":"A button that opens a centered modal dialog over a dimmed backdrop, with a title, a paragraph of body text, and Cancel and Confirm buttons plus a close. Closes via Cancel, the close, backdrop click, or Esc. Keyboard accessible." },
+
+  { "file":"01-toast", "cat":"Motion", "h":470,
+    "headline":"A stack that fans out when you reach for it",
+    "tell":"Spam the trigger. One stack <b>replays its animation from frame zero</b> on every click. The other re-stacks mid-flight and fans open when you hover.",
+    "try":"click the trigger 4 to 5 times fast, then hover the stack",
+    "prompt":"A Show notification button. Each click pushes a toast onto a stack in the corner with an icon, title, message, and close. Toasts auto-dismiss after about 4s and can be dismissed early. Support several stacked at once; rapid clicks must enqueue gracefully." },
+
+  { "file":"11-skeleton", "cat":"Perceived speed", "h":450,
+    "headline":"A skeleton that knows when not to flash",
+    "tell":"Click reload over and over. One <b>flashes a loader every time</b>, even on a fast load. The other waits to see if the load is slow enough to bother, and it can actually fail.",
+    "try":"click Reload repeatedly and watch for fast loads and the error state",
+    "prompt":"A content card (avatar, name, a two-line excerpt, and a small thumbnail) that loads data. A Reload button re-triggers loading. Simulate a variable delay (random 100 to 1200ms). Show an appropriate loading state, then the loaded content." },
+
+  { "file":"12-theme-toggle", "cat":"Surfaces", "h":470,
+    "headline":"A switch that crossfades day into night, without smearing every pixel",
+    "tell":"Flip it. One transitions <b>every color on the panel at once</b>, and that slowness leaks into ordinary hovers. The other crossfades once, then snaps hover and press back to instant.",
+    "try":"flip the theme, then immediately hover the primary button",
+    "prompt":"A small UI panel, a card with a heading, a line of text, a primary button, and a settings toggle, plus a light and dark theme switch in its corner. Toggling the switch transitions the whole panel between a polished light theme and a polished dark theme." },
+
+  { "file":"06-toggle", "cat":"Feel", "h":380,
+    "headline":"A toggle that flips instantly, then tells you if it actually saved",
+    "tell":"Both flip with a satisfying knob. Only one <b>simulates the save, then visibly rolls back</b> when it fails.",
+    "try":"flip the Push to mobile row, its first save is rigged to fail",
+    "prompt":"A settings row with a label, a short description, and an on and off switch on the right. Clicking flips it. Make the switch feel tactile and physical. Include hover, press, and keyboard focus; the on and off state must be unmistakable." },
+
+  { "file":"03-pricing-card", "cat":"Surfaces + type", "h":680,
+    "headline":"A pricing card you can actually use, not just look at",
+    "tell":"At rest they look like twins. Then <b>click the button</b> and <b>switch the billing period</b>. One has a real loading and success flow with a price that rolls in place. The other has a bounce.",
+    "try":"click the button, then switch Monthly and Yearly",
+    "prompt":"A single pricing card: plan name, a large price with /month, a one-line description, a list of 4 features each with a check icon, and a primary button. Include a hover state for the card and for the button." },
+
+  { "file":"13-command-palette", "cat":"Restraint", "h":500,
+    "headline":"A palette that confirms in place, instead of shaking and toasting",
+    "tell":"Run a command. One <b>throws a confirmation across the whole panel</b> and shakes on an empty result. The other confirms right at the row you acted on, and never animates a keystroke.",
+    "try":"select a row and press Enter, hold the down arrow to scrub the selection",
+    "prompt":"A Cmd-K style command palette: a search input at the top and a filtered list of about 6 commands below, each with a leading icon and a keyboard shortcut. Typing filters the list instantly. Up and Down arrows move the selection; Enter runs it. Opens visible on load." },
+
+  { "file":"14-hero-type", "cat":"Typography", "h":480,
+    "headline":"A call to action that responds, not one that just looks good",
+    "tell":"Both look great. Then press the primary button. One runs a real loading and done state. The other is a nice animation over a dead link.",
+    "try":"click the primary button and watch what happens after the press",
+    "prompt":"A marketing hero text block (no images): a small uppercase eyebrow label, a large two-line headline, a supporting paragraph of about 2 sentences, and two buttons (a primary and a secondary). Pure layout and type." },
+
+  { "file":"02-copy-button", "cat":"States", "h":320,
+    "headline":"A copy button that is honest about failure",
+    "tell":"Click copy and both feel good on the happy path. Block the clipboard and one shows a clear Failed state with an icon and a label. The other fails silently.",
+    "try":"click Copy, then click it again",
+    "prompt":"A row showing a short code string (for example, npx skills add arjunlohan/finesse) with a Copy button containing a copy icon. Clicking copies the text and the button confirms success in place, then reverts after about 1.2s. Include resting, hover, pressed, and keyboard focus states." },
+
+  { "file":"04-tabs", "cat":"Motion", "h":470,
+    "headline":"A segmented control that answers your press",
+    "tell":"Press and hold a tab. One gives under your finger and answers the press. The other only moves the indicator.",
+    "try":"press and hold any tab, including the already-selected one",
+    "prompt":"A horizontal tab control with 3 to 4 tabs and a content area that swaps per tab. The active tab is clearly indicated by a moving indicator. Include hover and keyboard focus; arrow-key navigation between tabs is a plus." },
+
+  { "file":"08-form-validation", "cat":"Accessibility", "h":520,
+    "headline":"Validation that forgives while you type",
+    "tell":"Type a bad email, tab away, then fix it one character at a time. One shows a checkmark when it is valid and never scolds a field you only tabbed through.",
+    "try":"type a bad email, tab away, then fix it character by character",
+    "prompt":"A compact sign-up form: email field, password field, and a submit button. Validate on submit and on blur: show a clear error for an invalid email and for a password under 8 characters, then a loading and disabled submit state during a faked request, ending in a success state." },
+
+  { "file":"05-counter", "cat":"Typography", "h":380,
+    "headline":"A live counter whose polish survives rapid clicks",
+    "tell":"Click as fast as you can. One retargets the rolling digits cleanly. The other can stutter or snap on the carry.",
+    "try":"click the action button as fast as you can",
+    "prompt":"A stat card showing a label (Active now) and a large number. A button increments the number by a random amount each click and the value animates upward in place. The number changes frequently and visibly." },
+
+  { "file":"07-dropdown", "cat":"Motion", "h":470,
+    "headline":"A dropdown that closes faster than it opens",
+    "tell":"Open and close the menu a few times. One clears faster than it opens. The other feels symmetric.",
+    "try":"open then close the menu repeatedly",
+    "prompt":"A button labelled Options with a chevron that opens a dropdown menu of about 5 items (some with leading icons, a divider, and one destructive Delete in red). Opens on interaction, closes on outside-click and Esc. Items are hoverable and clickable. Keyboard accessible." },
+
+  { "file":"15-like-button", "cat":"Feel", "h":320,
+    "headline":"A like that answers on touch, not on release",
+    "tell":"Press and hold the heart without releasing. One fills instantly on press. The other waits for you to let go.",
+    "try":"press and hold the heart without releasing",
+    "prompt":"A social post action bar: a Like (heart) button with a count, plus comment and share icons. Clicking Like toggles the liked state, updates the count, and gives a satisfying confirmation. Make the first like feel delightful, but not annoying when toggled repeatedly." },
+
+  { "file":"10-accordion", "cat":"Motion", "h":520,
+    "headline":"Directional easing on collapse, where the baseline already did the hard parts",
+    "tell":"Open and close a row. The gap here is small. finesse leaves on a slightly faster ease than it arrives. The baseline already nailed most of it.",
+    "try":"open then close a row and watch the answer fade",
+    "prompt":"An FAQ accordion of 4 items. Clicking a header expands its answer panel and rotates a chevron to indicate state; clicking again collapses it. The expand and collapse must be smooth and feel good when toggled quickly." }
+]
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  root.classList.add("js");
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var CMD = "npx skills add arjunlohan/finesse";
+  function flash(btn) {
+    btn.setAttribute("data-copied", "true");
+    btn.setAttribute("aria-label", "Copied");
+    clearTimeout(btn._t);
+    btn._t = setTimeout(function () {
+      btn.setAttribute("data-copied", "false");
+      btn.setAttribute("aria-label", "Copy install command");
+    }, 1300);
+  }
+  function copy(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(function () { legacy(text); });
+    }
+    legacy(text); return Promise.resolve();
+  }
+  function legacy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  var copyBtn = document.getElementById("copy-btn");
+  if (copyBtn) copyBtn.addEventListener("click", function () { copy(CMD); flash(copyBtn); });
+
+  var DATA = JSON.parse(document.getElementById("cmp-data").textContent);
+  var BASE = "components/";
+  var TOTAL = DATA.length;
+  var mount = document.getElementById("comparisons");
+  var ICON_X = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  var ICON_CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  var ICON_REPLAY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4M3 4v4h4"/></svg>';
+  var ICON_TRI = '<svg class="tw" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>';
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  function frame(c, variant) {
+    var isFin = variant === "fin";
+    var src = BASE + c.file + "--" + (isFin ? "finesse" : "control") + ".html";
+    var tag = isFin
+      ? '<span class="badge badge--check" aria-hidden="true">' + ICON_CHECK + '</span>Opus 4.8 + /finesse'
+      : '<span class="badge badge--x" aria-hidden="true">' + ICON_X + '</span>Opus 4.8';
+    return '' +
+      '<div class="frame frame--' + (isFin ? "fin" : "ctrl") + '">' +
+        '<div class="frame__bar"><span class="frame__tag">' + tag + '</span></div>' +
+        '<div class="frame__screen">' +
+          '<iframe loading="lazy" title="' + c.headline + ' (' + (isFin ? "finesse" : "control") + ')" ' +
+            'src="' + src + '" height="' + c.h + '" scrolling="no"></iframe>' +
+        '</div>' +
+      '</div>';
+  }
+
+  DATA.forEach(function (c, i) {
+    var sec = document.createElement("section");
+    sec.className = "cmp reveal";
+    sec.id = c.file;
+    sec.innerHTML = '' +
+      '<div class="cmp__head">' +
+        '<div class="cmp__meta">' +
+          '<span class="cmp__idx">' + pad(i + 1) + ' / ' + pad(TOTAL) + '</span>' +
+          '<span class="cmp__cat">' + c.cat + '</span>' +
+          '<span class="cmp__hr"></span>' +
+        '</div>' +
+        '<h2>' + c.headline + '</h2>' +
+        '<p class="cmp__tell">' + c.tell + '</p>' +
+        '<details class="cmp__prompt"><summary>' + ICON_TRI + 'The prompt given to both agents</summary>' +
+          '<p>' + c.prompt + '</p></details>' +
+      '</div>' +
+      '<div class="stage">' + frame(c, "ctrl") + frame(c, "fin") + '</div>' +
+      '<div class="cmp__actions">' +
+        '<button class="replay" type="button" data-replay>' + ICON_REPLAY + 'Replay both</button>' +
+        '<span class="try-hint">Try: <b>' + c.try + '</b></span>' +
+      '</div>';
+    mount.appendChild(sec);
+  });
+
+  mount.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-replay]");
+    if (!btn) return;
+    var frames = btn.closest(".cmp").querySelectorAll("iframe");
+    frames.forEach(function (f) { f.src = f.src; });
+    if (!reduce) {
+      btn.setAttribute("data-spin", "true");
+      setTimeout(function () { btn.removeAttribute("data-spin"); }, 320);
+    }
+  });
+
+  if (!reduce && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        en.target.classList.add("in");
+        io.unobserve(en.target);
+      });
+    }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+    document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
+  }
+})();
+</script>
+</body>
+</html>

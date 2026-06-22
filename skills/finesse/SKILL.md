@@ -7,7 +7,7 @@ description: Design-engineering craft for making interfaces feel polished, fast,
 
 Design-engineering craft for interfaces that feel polished, fast, and physical.
 
-Great interfaces are rarely one big thing. They are an accumulation of small, individually invisible details that compound — *felt, not seen*. This skill encodes those details as concrete, committed defaults so the work is consistent instead of vibes. The numbers here are opinionated starting points distilled from the people who set the bar (see `sources.md`); commit to them, then trust your eyes — a value is right when it *feels* right.
+Great interfaces are rarely one big thing. They are an accumulation of small, individually invisible details that compound — *felt, not seen*. This skill encodes those details as concrete, committed defaults so the work is consistent instead of vibes. The numbers here are opinionated starting points; commit to them, then trust your eyes — a value is right when it *feels* right.
 
 ## How to use this skill
 
@@ -54,7 +54,7 @@ Every animation in the product should pull from one small scale. Inconsistent, h
 
 **Springs** (for gesture-driven or physical motion). Specify *response* and *bounce*, not a fixed duration — "nothing in the real world changes instantly." Keep bounce low for functional UI.
 - Functional (icon swap, toggle): `{ type: "spring", duration: 0.3, bounce: 0 }`
-- Apple-style physical (sheets, playful): `{ type: "spring", duration: 0.5, bounce: 0.2 }`
+- Physical (sheets, playful): `{ type: "spring", duration: 0.5, bounce: 0.2 }`
 - Avoid springs where precision matters more than feel.
 
 **Distances:** enter from `translateY(8–12px)`, never from far away. **Never animate from `scale(0)`** — it looks like it teleports in; start from ~`0.9`. Press feedback is `scale(0.96)` — never below `0.95` (feels exaggerated).
@@ -155,6 +155,3 @@ When reviewing code or "making it feel better," return findings as **before/afte
 | [layout-and-color.md](layout-and-color.md) | Spacing scale & grouping, alignment, near-black/white, functional color scales, depth/shadow theory |
 | [performance.md](performance.md) | Compositor-only animation, `will-change`, FLIP, the tool ladder, perceived speed, 60fps/RAIL |
 | [accessibility.md](accessibility.md) | `prefers-reduced-motion` policy, forced-colors, contrast, focus, semantics/ARIA, vestibular safety |
-| [sources.md](sources.md) | Who each principle comes from, with links — credits and further reading |
-
-*Provenance: distilled from the work of Rauno Freiberg, Emil Kowalski, Vercel Geist, Linear, Stripe, Apple HIG, Material Design, Josh Comeau, Refactoring UI, and others — see [sources.md](sources.md). Opinionated defaults; not affiliated with or endorsed by them.*

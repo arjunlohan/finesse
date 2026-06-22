@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Copy to clipboard</title>
+<style>
+  :root {
+    /* ---- Motion tokens (the shared contract) ---- */
+    --duration-fast: 150ms;     /* micro: hover, press, color, icon tint */
+    --duration-base: 200ms;     /* standard reveals */
+    --duration-slow: 300ms;     /* icon cross-fade swap */
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* small in-place change */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* enter / decelerate */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* exit / accelerate */
+
+    /* ---- Surface & color (saturated neutrals, near-black not #000) ---- */
+    --canvas:        hsl(40 12% 98%);
+    --field-bg:      hsl(40 14% 99.5%);
+    --field-border:  hsl(40 8% 88%);
+    --field-border-strong: hsl(40 8% 82%);
+
+    --ink-primary:   hsl(220 18% 16%);   /* near-black */
+    --ink-secondary: hsl(220 10% 38%);
+    --ink-tertiary:  hsl(220 8% 56%);
+
+    --token-prompt:  hsl(220 9% 64%);    /* the "$" sigil */
+    --token-cmd:     hsl(258 52% 52%);   /* the executable */
+    --token-arg:     hsl(220 16% 28%);   /* arguments */
+
+    /* Button (resting = quiet near-white, surfaces over the field) */
+    --btn-bg:        hsl(0 0% 100%);
+    --btn-bg-hover:  hsl(40 14% 97%);
+    --btn-border:    hsl(40 8% 86%);
+    --btn-border-hover: hsl(40 8% 80%);
+    --btn-ink:       hsl(220 16% 26%);
+
+    --success:       hsl(150 62% 33%);
+    --success-tint:  hsl(150 48% 96%);
+    --success-border: hsl(150 40% 78%);
+
+    --danger:        hsl(2 64% 48%);
+    --danger-tint:   hsl(2 70% 97%);
+    --danger-border: hsl(2 55% 84%);
+
+    --ring:          hsl(258 80% 62%);
+
+    /* Concentric radii: outer field = inner button + the field's padding (6px) */
+    --r-field: 16px;
+    --r-btn:   10px;   /* 16 - 6 padding = 10 */
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    display: grid;
+    place-items: center;
+    padding: 40px 28px;
+    background: var(--canvas);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 412px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-tertiary);
+    padding-left: 2px;
+  }
+
+  /* ---------- The copy row ---------- */
+  .copy-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 6px 6px 16px;
+    background: var(--field-bg);
+    border: 1px solid var(--field-border);
+    border-radius: var(--r-field);
+    /* Layered, hue-tinted shadow — light from above, never pure black */
+    box-shadow:
+      0 1px 1px hsl(40 10% 50% / 0.04),
+      0 2px 6px hsl(40 10% 40% / 0.05),
+      0 8px 20px hsl(40 10% 40% / 0.04),
+      inset 0 1px 0 hsl(0 0% 100% / 0.7);
+    transition: border-color var(--duration-base) var(--ease-standard),
+                box-shadow var(--duration-base) var(--ease-standard);
+  }
+  /* Highlight the whole field while the button inside has keyboard focus */
+  .copy-row:focus-within {
+    border-color: var(--field-border-strong);
+  }
+
+  .code {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+    /* tabular-nums: the string never reflows when state-adjacent UI changes width */
+    font-variant-numeric: tabular-nums;
+    color: var(--token-arg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* optical: nudge the baseline so mono sits centered against the button */
+    padding-top: 1px;
+    user-select: all;
+  }
+  .code .prompt { color: var(--token-prompt); margin-right: 2px; user-select: none; }
+  .code .cmd    { color: var(--token-cmd); font-weight: 600; }
+  .code .arg    { color: var(--token-arg); }
+
+  /* ---------- The button ---------- */
+  .copy-btn {
+    position: relative;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    /* icon side gets ~2px less padding than the label side (optical) */
+    padding: 8px 13px 8px 11px;
+    min-height: 36px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 560;
+    line-height: 1;
+    letter-spacing: 0.005em;
+    color: var(--btn-ink);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    border-radius: var(--r-btn);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow:
+      0 1px 1.5px hsl(40 10% 40% / 0.05),
+      inset 0 1px 0 hsl(0 0% 100% / 0.8);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  /* Generous hit area without changing layout (>=40px tall target) */
+  .copy-btn::before {
+    content: "";
+    position: absolute;
+    inset: -3px -2px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .copy-btn:hover {
+      background: var(--btn-bg-hover);
+      border-color: var(--btn-border-hover);
+    }
+  }
+
+  .copy-btn:active { transform: scale(0.96); }
+
+  .copy-btn:focus-visible {
+    outline: none;
+    /* two-stop ring: gap in the field bg, then the ring color; hugs the radius */
+    box-shadow:
+      0 0 0 2px var(--field-bg),
+      0 0 0 4px var(--ring),
+      inset 0 1px 0 hsl(0 0% 100% / 0.8);
+  }
+
+  /* Success state — tinted, with its own border. Color is NOT the only signal:
+     the icon swaps to a check AND the label text changes to "Copied". */
+  .copy-btn[data-state="copied"] {
+    color: var(--success);
+    background: var(--success-tint);
+    border-color: var(--success-border);
+  }
+
+  /* Error state — distinct color + icon + "Failed" label (never color alone) */
+  .copy-btn[data-state="error"] {
+    color: var(--danger);
+    background: var(--danger-tint);
+    border-color: var(--danger-border);
+  }
+
+  /* ---------- Icon cross-fade (stacked, interruptible via transitions) ---------- */
+  .icon {
+    display: inline-grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+  }
+  .icon > svg {
+    grid-area: 1 / 1;          /* stack all three without absolute positioning */
+    width: 16px;
+    height: 16px;
+    transition:
+      opacity var(--duration-slow) var(--ease-standard),
+      transform var(--duration-slow) var(--ease-standard),
+      filter var(--duration-slow) var(--ease-standard);
+  }
+  /* hidden glyphs sit slightly small + blurred; the active one is crisp & full */
+  .icon > svg.is-hidden {
+    opacity: 0;
+    transform: scale(0.7);
+    filter: blur(3px);
+    pointer-events: none;
+  }
+  .icon > svg:not(.is-hidden) {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+
+  /* The label text also cross-swaps width-stably */
+  .label {
+    display: inline-grid;
+    /* reserve the widest word so the button never resizes between states */
+    min-width: 3.6em;
+    text-align: left;
+  }
+  .label > span {
+    grid-area: 1 / 1;
+    white-space: nowrap;
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+  .label > span.is-hidden { opacity: 0; }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .hint {
+    margin: 0;
+    padding-left: 2px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-tertiary);
+    text-wrap: pretty;
+  }
+  .hint kbd {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 560;
+    color: var(--ink-secondary);
+    background: hsl(40 10% 95%);
+    border: 1px solid hsl(40 8% 88%);
+    border-bottom-width: 1.5px;
+    border-radius: 5px;
+    padding: 1.5px 5px;
+  }
+
+  /* ---------- Reduced motion: substitute fades, drop transforms/blur ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    .copy-btn { transition:
+        background-color var(--duration-fast) linear,
+        border-color var(--duration-fast) linear,
+        color var(--duration-fast) linear; }
+    .copy-btn:active { transform: none; }
+    .copy-row { transition: border-color var(--duration-fast) linear; }
+    .icon > svg {
+      transition: opacity var(--duration-fast) linear;
+      transform: none !important;
+      filter: none !important;
+    }
+    .label > span { transition: opacity var(--duration-fast) linear; }
+  }
+
+  /* Essential boundaries survive Windows High Contrast */
+  @media (forced-colors: active) {
+    .copy-row, .copy-btn { border-color: CanvasText; }
+    .copy-btn:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <p class="eyebrow">Install</p>
+
+    <div class="copy-row">
+      <code class="code" id="snippet"><span class="prompt" aria-hidden="true">$ </span><span class="cmd">npx</span> <span class="arg">skills add arjunlohan/finesse</span></code>
+
+      <button class="copy-btn" id="copyBtn" type="button" data-state="idle" aria-label="Copy command to clipboard">
+        <span class="icon" aria-hidden="true">
+          <!-- copy (resting) -->
+          <svg class="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="11" height="11" rx="2.4" />
+            <path d="M5 15.5A2 2 0 0 1 4 13.8V6a2 2 0 0 1 2-2h7.8A2 2 0 0 1 15 5" />
+          </svg>
+          <!-- check (success) -->
+          <svg class="i-check is-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6.5 9.2 17.3 4 12.1" />
+          </svg>
+          <!-- alert (error) -->
+          <svg class="i-error is-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 8v4.6" />
+            <circle cx="12" cy="16.4" r="0.4" fill="currentColor" stroke="none" />
+            <path d="M10.3 4.3 2.7 17.5A2 2 0 0 0 4.4 20.5h15.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" />
+          </svg>
+        </span>
+        <span class="label" aria-hidden="true">
+          <span class="t-copy">Copy</span>
+          <span class="t-copied is-hidden">Copied</span>
+          <span class="t-error is-hidden">Failed</span>
+        </span>
+      </button>
+    </div>
+
+    <p class="hint">Run it in your project root, or press <kbd>⌘C</kbd> after selecting the line.</p>
+
+    <!-- screen-reader announcement for the state change (tabular UI is silent to AT otherwise) -->
+    <div class="visually-hidden" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script>
+    (function () {
+      var btn = document.getElementById("copyBtn");
+      var status = document.getElementById("status");
+      var snippet = document.getElementById("snippet");
+
+      // The exact text to copy (without the visual "$ " prompt sigil)
+      var TEXT = "npx skills add arjunlohan/finesse";
+      var REVERT_MS = 1200;
+      var revertTimer = null;
+
+      var icons = {
+        copy:  btn.querySelector(".i-copy"),
+        check: btn.querySelector(".i-check"),
+        error: btn.querySelector(".i-error")
+      };
+      var labels = {
+        copy:   btn.querySelector(".t-copy"),
+        copied: btn.querySelector(".t-copied"),
+        error:  btn.querySelector(".t-error")
+      };
+
+      function showIcon(name) {
+        for (var k in icons) icons[k].classList.toggle("is-hidden", k !== name);
+      }
+      function showLabel(name) {
+        for (var k in labels) labels[k].classList.toggle("is-hidden", k !== name);
+      }
+
+      function setState(state) {
+        btn.dataset.state = state;
+        if (state === "copied") {
+          showIcon("check"); showLabel("copied");
+          btn.setAttribute("aria-label", "Copied to clipboard");
+          status.textContent = "Copied to clipboard";
+        } else if (state === "error") {
+          showIcon("error"); showLabel("error");
+          btn.setAttribute("aria-label", "Couldn't copy — select the text and press Command C");
+          status.textContent = "Couldn't copy. Select the text and copy manually.";
+        } else {
+          showIcon("copy"); showLabel("copy");
+          btn.setAttribute("aria-label", "Copy command to clipboard");
+          // don't re-announce on the silent revert
+        }
+      }
+
+      // Robust copy with a legacy fallback for non-secure contexts (e.g. file://)
+      function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+          try {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "fixed";
+            ta.style.top = "-9999px";
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = document.execCommand("copy");
+            document.body.removeChild(ta);
+            ok ? resolve() : reject(new Error("execCommand failed"));
+          } catch (e) { reject(e); }
+        });
+      }
+
+      function handleCopy() {
+        // Optimistic, trigger-local feedback: confirm in place immediately,
+        // then reconcile — revert to error only if the write actually rejected.
+        clearTimeout(revertTimer);          // flicker guard: restart the window cleanly
+        setState("copied");                  // optimistic success the instant they act
+
+        copyText(TEXT).then(function () {
+          revertTimer = setTimeout(function () { setState("idle"); }, REVERT_MS);
+        }).catch(function () {
+          setState("error");                 // roll back to a distinct, honest error state
+          revertTimer = setTimeout(function () { setState("idle"); }, REVERT_MS + 400);
+        });
+      }
+
+      // Copy is destructive-of-state-display but safe & idempotent; commit on click
+      // (release) which also gives keyboard Enter/Space for free on a real <button>.
+      btn.addEventListener("click", handleCopy);
+
+      // Convenience: double-click the snippet selects just the command text
+      snippet.addEventListener("dblclick", function () {
+        var sel = window.getSelection();
+        var range = document.createRange();
+        range.selectNodeContents(snippet);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      });
+    })();
+  </script>
+</body>
+</html>

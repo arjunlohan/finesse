@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Content card</title>
+<style>
+  :root {
+    /* ---- Motion tokens (shared contract) ---- */
+    --duration-fast:   150ms;
+    --duration-base:   200ms;
+    --duration-slow:   300ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* small in-place state change */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* entering / decelerating */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* exiting / accelerating */
+
+    /* ---- Surface + palette (near-white page, saturated neutrals) ---- */
+    --page:            hsl(40 12% 98%);
+    --card:            hsl(40 20% 100%);
+    --card-border:     hsl(40 14% 90%);
+
+    /* Three text colors — near-black, never #000 */
+    --text-primary:    hsl(40 8% 14%);
+    --text-secondary:  hsl(40 6% 38%);
+    --text-tertiary:   hsl(40 5% 56%);
+
+    /* Skeleton tones — tinted with the surface hue, not flat grey */
+    --skeleton-base:      hsl(40 14% 92%);
+    --skeleton-highlight: hsl(40 22% 97%);
+
+    /* Accent — a calm, confident blue-violet for the reload control */
+    --accent:          hsl(244 62% 56%);
+    --accent-hover:    hsl(244 62% 50%);
+    --accent-press:    hsl(244 62% 46%);
+    --accent-ring:     hsl(244 70% 62%);
+
+    --thumb-a:         hsl(244 48% 90%);
+    --thumb-b:         hsl(208 56% 86%);
+    --thumb-c:         hsl(168 44% 86%);
+
+    --danger-text:     hsl(2 62% 44%);
+    --danger-bg:       hsl(8 64% 96%);
+
+    /* Concentric radii: outer 18, card padding 18 → inner content radius 12; thumb 10 */
+    --radius-card:   18px;
+    --radius-thumb:  12px;
+    --radius-avatar: 999px;
+    --radius-line:   6px;
+    --radius-btn:    10px;
+
+    /* Layered, tinted shadow — light from above, surface-hued, never pure black */
+    --shadow:
+      0 1px 2px hsl(40 20% 30% / 0.06),
+      0 4px 10px hsl(40 20% 30% / 0.05),
+      0 12px 28px hsl(40 24% 28% / 0.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  /* the hidden attribute must win over display:flex on .error */
+  [hidden] { display: none !important; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    display: grid;
+    place-items: center;
+    min-height: 100dvh;
+    padding: 40px 28px;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 408px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ---------- Card shell ---------- */
+  .card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--card-border);          /* real border for the divider/boundary */
+    border-radius: var(--radius-card);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    /* a tiny live-height transition so the card doesn't jump if states differ in height */
+    transition: box-shadow var(--duration-base) var(--ease-standard);
+  }
+
+  /* The two layers (skeleton + content) stack so we can cross-fade without layout shift */
+  .layers { position: relative; }
+
+  .layer {
+    transition:
+      opacity var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out),
+      filter var(--duration-base) var(--ease-out);
+  }
+
+  /* The non-active layer is absolutely positioned over the active one and faded out */
+  .layer[data-stacked="true"] {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Skeleton entering: gentle settle. Exiting: faster + accelerate (exit < enter). */
+  .layer.is-hidden {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.992);
+    transition:
+      opacity var(--duration-fast) var(--ease-in),
+      transform var(--duration-fast) var(--ease-in);
+  }
+
+  /* Loaded content enters from just below with a soft scale — never from scale(0).
+     The priming state snaps instantly (no transition); only the release animates
+     back to rest with the --ease-out enter curve on .layer. */
+  .content.is-enter {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+    transition: none;
+  }
+
+  /* ---------- Header row: avatar + name/meta ---------- */
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+  }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-avatar);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: var(--thumb-a);
+    /* subtle inner ring so the avatar reads as a real surface, survives forced-colors via border */
+    border: 1px solid hsl(40 14% 88%);
+    color: hsl(244 50% 38%);
+    font-weight: 650;
+    font-size: 18px;
+    letter-spacing: 0.01em;
+  }
+
+  .head-text {
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .name {
+    font-size: 16px;
+    font-weight: 640;
+    line-height: 1.25;
+    color: var(--text-primary);
+    letter-spacing: -0.006em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    line-height: 1.2;
+    color: var(--text-secondary);
+  }
+
+  .meta .handle { color: var(--text-tertiary); }
+  .dot {
+    width: 3px; height: 3px; border-radius: 999px;
+    background: var(--text-tertiary);
+    flex: 0 0 auto;
+  }
+
+  /* ---------- Excerpt ---------- */
+  .excerpt {
+    margin: 14px 0 0;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    text-wrap: pretty;
+  }
+
+  /* ---------- Thumbnail strip ---------- */
+  .thumb {
+    margin-top: 14px;
+    height: 132px;
+    border-radius: var(--radius-thumb);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid hsl(40 14% 90%);
+    background: var(--skeleton-base);
+  }
+
+  .thumb-art {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  /* small caption chip on the thumbnail */
+  .thumb-tag {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px 5px 7px;
+    border-radius: 8px;
+    background: hsl(40 18% 100% / 0.86);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    border: 1px solid hsl(40 14% 88% / 0.9);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.01em;
+    box-shadow: 0 1px 2px hsl(40 20% 30% / 0.08);
+  }
+  .thumb-tag svg { display: block; }
+
+  /* ---------- Footer: stats + reload ---------- */
+  .foot {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--card-border);   /* a real border for the divider */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .stats {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    min-width: 0;
+  }
+  .stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .stat svg { display: block; color: var(--text-tertiary); }
+  .stat b {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;   /* counts that change in place don't shift */
+  }
+
+  /* ---------- Reload button ---------- */
+  .reload {
+    -webkit-tap-highlight-color: transparent;
+    appearance: none;
+    border: 0;
+    margin: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    /* optical: icon side gets ~2px less padding than the text side */
+    padding: 9px 14px 9px 12px;
+    border-radius: var(--radius-btn);
+    background: var(--accent);
+    color: hsl(0 0% 100%);
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    line-height: 1;
+    position: relative;
+    box-shadow:
+      0 1px 2px hsl(244 50% 30% / 0.24),
+      inset 0 1px 0 hsl(0 0% 100% / 0.14);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  /* Generous hit area without overlapping neighbours */
+  .reload::before {
+    content: "";
+    position: absolute;
+    inset: -8px -6px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .reload:hover { background-color: var(--accent-hover); }
+  }
+
+  .reload:active { transform: scale(0.96); background-color: var(--accent-press); }
+
+  .reload:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--page),
+      0 0 0 4px var(--accent-ring),
+      0 1px 2px hsl(244 50% 30% / 0.24);
+  }
+
+  .reload:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
+
+  .reload .reload-ico {
+    display: block;
+    transform-origin: 50% 50%;
+  }
+
+  /* While loading, the icon spins (continuous loop → linear easing) */
+  .reload[data-loading="true"] .reload-ico {
+    animation: spin 720ms linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .reload .label { display: inline-block; }
+
+  /* ---------- Skeleton primitives ---------- */
+  .sk {
+    background: var(--skeleton-base);
+    border-radius: var(--radius-line);
+    position: relative;
+    overflow: hidden;
+  }
+  .sk--avatar { border-radius: var(--radius-avatar); }
+  .sk--thumb  { border-radius: var(--radius-thumb); }
+
+  .sk-name { height: 13px; width: 52%; border-radius: 5px; }
+  .sk-meta { height: 10px; width: 38%; border-radius: 5px; margin-top: 2px; }
+  .sk-line { height: 11px; border-radius: 5px; }
+  .sk-line + .sk-line { margin-top: 9px; }
+  .sk-line.w1 { width: 96%; }
+  .sk-line.w2 { width: 78%; }
+
+  .sk-stat { height: 11px; width: 38px; border-radius: 5px; }
+  .sk-stat + .sk-stat { margin-left: 14px; }
+
+  /* Shimmer — opted IN under no-preference so the static block is the safe default */
+  @media (prefers-reduced-motion: no-preference) {
+    .sk::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        90deg,
+        hsl(40 22% 97% / 0) 20%,
+        var(--skeleton-highlight) 50%,
+        hsl(40 22% 97% / 0) 80%
+      );
+      transform: translateX(-100%);
+      animation: shimmer 1.35s ease-in-out infinite;
+      will-change: transform;
+    }
+    /* small, organic stagger so the rows don't pulse in perfect lockstep */
+    .sk.d1::after { animation-delay: 0.08s; }
+    .sk.d2::after { animation-delay: 0.16s; }
+    .sk.d3::after { animation-delay: 0.24s; }
+  }
+  @keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
+  }
+
+  /* ---------- Error state ---------- */
+  .error {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 14px;
+    border-radius: var(--radius-thumb);
+    background: var(--danger-bg);
+    border: 1px solid hsl(8 60% 90%);
+  }
+  .error svg { flex: 0 0 auto; color: var(--danger-text); margin-top: 1px; }
+  .error-text { min-width: 0; }
+  .error-title {
+    font-size: 14px;
+    font-weight: 640;
+    color: var(--danger-text);
+    line-height: 1.3;
+  }
+  .error-body {
+    margin-top: 3px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: hsl(2 28% 38%);
+    text-wrap: pretty;
+  }
+
+  /* Status line under the card: tabular so the ms count doesn't jitter */
+  .status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 16px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+  .status .pip {
+    width: 6px; height: 6px; border-radius: 999px;
+    background: var(--text-tertiary);
+    transition: background-color var(--duration-base) var(--ease-standard);
+  }
+  .status[data-state="loading"] .pip { background: var(--accent); }
+  .status[data-state="ready"]   .pip { background: hsl(150 52% 44%); }
+  .status[data-state="error"]   .pip { background: var(--danger-text); }
+
+  /* sr-only for the live region */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Reduced motion: substitute fades for travel/scale, kill spin + shimmer */
+  @media (prefers-reduced-motion: reduce) {
+    .layer,
+    .layer.is-hidden {
+      transition: opacity var(--duration-fast) var(--ease-standard);
+      transform: none !important;
+    }
+    .content.is-enter { transform: none; }
+    .reload { transition: background-color var(--duration-fast) var(--ease-standard); }
+    .reload:active { transform: none; }
+    .reload[data-loading="true"] .reload-ico { animation: none; }
+  }
+
+  /* Forced colors: give the boundary something the OS can paint */
+  @media (forced-colors: active) {
+    .card { border-color: CanvasText; }
+    .reload:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <div class="card" role="group" aria-label="Article preview">
+      <div class="layers" id="layers">
+
+        <!-- ============ SKELETON LAYER ============ -->
+        <div class="layer skeleton" id="skeleton" aria-hidden="true">
+          <div class="head">
+            <div class="avatar-wrap">
+              <div class="sk sk--avatar" style="width:48px;height:48px;"></div>
+            </div>
+            <div class="head-text">
+              <div class="sk sk-name d1"></div>
+              <div class="sk sk-meta d2"></div>
+            </div>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="sk sk-line w1 d1"></div>
+            <div class="sk sk-line w2 d2"></div>
+          </div>
+          <div class="sk sk--thumb d3" style="height:132px;margin-top:14px;"></div>
+          <div class="foot">
+            <div style="display:flex;align-items:center;">
+              <div class="sk sk-stat d1"></div>
+              <div class="sk sk-stat d2"></div>
+              <div class="sk sk-stat d3"></div>
+            </div>
+            <div class="sk" style="width:104px;height:34px;border-radius:10px;"></div>
+          </div>
+        </div>
+
+        <!-- ============ CONTENT LAYER ============ -->
+        <div class="layer content" id="content">
+          <div class="head">
+            <div class="avatar-wrap">
+              <div class="avatar" id="avatar" aria-hidden="true">EM</div>
+            </div>
+            <div class="head-text">
+              <div class="name" id="name">Elena Maris</div>
+              <div class="meta">
+                <span class="handle" id="handle">@elena</span>
+                <span class="dot" aria-hidden="true"></span>
+                <span id="when">4 min read</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="excerpt" id="excerpt">
+            The quiet revolution in interface design isn't louder animation — it's
+            restraint. The best transitions are the ones you never consciously notice.
+          </p>
+
+          <div class="thumb" id="thumb">
+            <svg class="thumb-art" id="thumb-art" viewBox="0 0 408 132" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+            <span class="thumb-tag" id="thumb-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="1.7"/>
+                <path d="m4 15 4-3 3 2 4-4 5 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="9" cy="9.5" r="1.4" fill="currentColor"/>
+              </svg>
+              <span id="thumb-label">Gradient study</span>
+            </span>
+          </div>
+
+          <!-- Error replaces the body when a load fails -->
+          <div class="error" id="error" hidden role="alert">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M12 7.5v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <circle cx="12" cy="16" r="1" fill="currentColor"/>
+            </svg>
+            <div class="error-text">
+              <div class="error-title">Couldn't load this card</div>
+              <div class="error-body">The request timed out. Check your connection and try again.</div>
+            </div>
+          </div>
+
+          <div class="foot">
+            <div class="stats" id="stats">
+              <span class="stat" title="Views">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.6"/>
+                  <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.6"/>
+                </svg>
+                <b id="views">0</b>
+              </span>
+              <span class="stat" title="Likes">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 20s-6.5-4.2-8.7-8.1C1.7 8.6 3.2 5.5 6.2 5.5c1.9 0 3.1 1.1 3.8 2.2.7-1.1 1.9-2.2 3.8-2.2 3 0 4.5 3.1 2.9 6.4C18.5 15.8 12 20 12 20Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>
+                <b id="likes">0</b>
+              </span>
+              <span class="stat" title="Comments">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>
+                <b id="comments">0</b>
+              </span>
+            </div>
+
+            <button class="reload" id="reload" type="button" aria-label="Reload card">
+              <svg class="reload-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 0-.6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M20 4.5V11h-6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="label" id="reload-label">Reload</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="status" id="status" data-state="ready">
+      <span class="pip" aria-hidden="true"></span>
+      <span id="status-text">Loaded in 0&#8202;ms</span>
+    </div>
+  </main>
+
+  <div class="sr-only" id="live" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  try {
+    window.matchMedia("(prefers-reduced-motion: reduce)")
+      .addEventListener("change", function (e) { reduce = e.matches; });
+  } catch (_) {}
+
+  // ---- Elements ----
+  var layers     = document.getElementById("layers");
+  var skeleton   = document.getElementById("skeleton");
+  var content    = document.getElementById("content");
+  var reload     = document.getElementById("reload");
+  var reloadLbl  = document.getElementById("reload-label");
+  var statusEl   = document.getElementById("status");
+  var statusText = document.getElementById("status-text");
+  var live       = document.getElementById("live");
+  var errorBox   = document.getElementById("error");
+
+  var els = {
+    avatar:   document.getElementById("avatar"),
+    name:     document.getElementById("name"),
+    handle:   document.getElementById("handle"),
+    when:     document.getElementById("when"),
+    excerpt:  document.getElementById("excerpt"),
+    thumbArt: document.getElementById("thumb-art"),
+    thumbLbl: document.getElementById("thumb-label"),
+    stats:    document.getElementById("stats"),
+    views:    document.getElementById("views"),
+    likes:    document.getElementById("likes"),
+    comments: document.getElementById("comments")
+  };
+
+  // ---- Sample dataset (no remote anything) ----
+  var DATA = [
+    {
+      initials: "EM", name: "Elena Maris", handle: "@elena", read: "4 min read",
+      excerpt: "The quiet revolution in interface design isn't louder animation — it's restraint. The best transitions are the ones you never consciously notice.",
+      tag: "Gradient study", hue: 244,
+      views: 12840, likes: 932, comments: 47
+    },
+    {
+      initials: "RK", name: "Rin Kobayashi", handle: "@rin", read: "7 min read",
+      excerpt: "Optimistic UI isn't a trick — it's a promise the interface keeps before the network does. Render the result, reconcile quietly, roll back honestly.",
+      tag: "Aurora field", hue: 168,
+      views: 8421, likes: 1204, comments: 88
+    },
+    {
+      initials: "TA", name: "Theo Andersson", handle: "@theo", read: "3 min read",
+      excerpt: "Concentric radii, tinted shadows, optical nudges — individually invisible, together unmistakable. Polish is an accumulation, not a feature.",
+      tag: "Soft dawn", hue: 28,
+      views: 5310, likes: 410, comments: 19
+    },
+    {
+      initials: "NV", name: "Nadia Voss", handle: "@nadia", read: "6 min read",
+      excerpt: "Exit faster than you enter. Things should leave quietly and arrive with intent — the asymmetry is what makes motion feel alive instead of mechanical.",
+      tag: "Tidal sweep", hue: 208,
+      views: 19602, likes: 2087, comments: 134
+    }
+  ];
+
+  var dataIndex = 0;
+
+  // Paint an SVG gradient thumbnail from a hue (deterministic, no remote images)
+  function paintThumb(hue) {
+    var h1 = hue, h2 = (hue + 38) % 360, h3 = (hue + 320) % 360;
+    var stop1 = "hsl(" + h1 + " 70% 72%)";
+    var stop2 = "hsl(" + h2 + " 64% 64%)";
+    var stop3 = "hsl(" + h3 + " 58% 70%)";
+    els.thumbArt.innerHTML =
+      '<defs>' +
+        '<linearGradient id="tg" x1="0" y1="0" x2="1" y2="1">' +
+          '<stop offset="0" stop-color="' + stop1 + '"/>' +
+          '<stop offset="0.55" stop-color="' + stop2 + '"/>' +
+          '<stop offset="1" stop-color="' + stop3 + '"/>' +
+        '</linearGradient>' +
+        '<radialGradient id="tgl" cx="0.22" cy="0.18" r="0.9">' +
+          '<stop offset="0" stop-color="hsl(' + h1 + ' 90% 92%)" stop-opacity="0.85"/>' +
+          '<stop offset="1" stop-color="hsl(' + h1 + ' 90% 92%)" stop-opacity="0"/>' +
+        '</radialGradient>' +
+      '</defs>' +
+      '<rect width="408" height="132" fill="url(#tg)"/>' +
+      '<rect width="408" height="132" fill="url(#tgl)"/>' +
+      '<g fill="none" stroke="hsl(' + h2 + ' 70% 100% / 0.30)" stroke-width="1.5">' +
+        '<path d="M-20 96 C 90 60, 150 124, 250 84 S 430 70, 470 100"/>' +
+        '<path d="M-20 112 C 90 80, 150 140, 250 102 S 430 92, 470 118"/>' +
+      '</g>' +
+      '<circle cx="330" cy="42" r="46" fill="hsl(' + h3 + ' 80% 96% / 0.22)"/>';
+  }
+
+  // ---- Count-up for the stat numbers (tabular-nums prevents shift) ----
+  function animateCount(el, to) {
+    if (reduce) { el.textContent = format(to); return; }
+    var from = 0;
+    var dur = 520;
+    var start = performance.now();
+    function tick(now) {
+      var t = Math.min(1, (now - start) / dur);
+      // easeOutCubic
+      var e = 1 - Math.pow(1 - t, 3);
+      el.textContent = format(Math.round(from + (to - from) * e));
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  function format(n) {
+    if (n >= 1000) {
+      var k = n / 1000;
+      return (k >= 10 ? Math.round(k) : (Math.round(k * 10) / 10)) + "k";
+    }
+    return String(n);
+  }
+
+  // =========================================================
+  //  Loader controller — show-delay (200ms) + min-visible (420ms)
+  //  Skeleton flicker guards.
+  // =========================================================
+  var SHOW_DELAY = 200;
+  var MIN_VISIBLE = 420;
+
+  var loaderState = {
+    showTimer: null,
+    shownAt: 0,
+    visible: false,
+    settleTimer: null
+  };
+
+  function showSkeleton() {
+    // Stack content under, fade skeleton in fresh
+    setStacked(content, true);
+    setStacked(skeleton, false);
+    content.classList.add("is-hidden");
+    skeleton.classList.remove("is-hidden");
+    skeleton.setAttribute("aria-hidden", "true");
+    loaderState.visible = true;
+    loaderState.shownAt = performance.now();
+  }
+
+  function hideSkeleton(applyContent) {
+    // Bring content to front, run its enter, fade skeleton out
+    setStacked(skeleton, true);
+    setStacked(content, false);
+
+    // Apply new data while content is invisible to avoid a flash of old data
+    applyContent();
+
+    // Prime the enter state, then release on the next frame (interruptible via transition)
+    content.classList.remove("is-hidden");
+    content.classList.add("is-enter");
+    skeleton.classList.add("is-hidden");
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        content.classList.remove("is-enter");
+      });
+    });
+  }
+
+  function setStacked(layerEl, stacked) {
+    layerEl.setAttribute("data-stacked", stacked ? "true" : "false");
+  }
+
+  // =========================================================
+  //  Fake fetch — variable delay ~100–1200ms, occasional failure
+  // =========================================================
+  var pendingToken = 0;
+
+  function fakeFetch() {
+    var delay = Math.round(100 + Math.random() * 1100);
+    // ~14% simulated failure so the error path is genuinely reachable
+    var fail = Math.random() < 0.14;
+    return new Promise(function (resolve, reject) {
+      setTimeout(function () {
+        if (fail) reject({ delay: delay });
+        else {
+          var item = DATA[dataIndex % DATA.length];
+          dataIndex++;
+          resolve({ item: item, delay: delay });
+        }
+      }, delay);
+    });
+  }
+
+  function setStatus(state, text) {
+    statusEl.setAttribute("data-state", state);
+    statusText.innerHTML = text;
+  }
+
+  function announce(msg) {
+    live.textContent = "";
+    // re-set on next tick so repeated identical messages still announce
+    window.setTimeout(function () { live.textContent = msg; }, 30);
+  }
+
+  function setLoadingButton(on) {
+    reload.setAttribute("data-loading", on ? "true" : "false");
+    reload.disabled = on;                 // block duplicate requests while in flight
+    reloadLbl.textContent = on ? "Loading" : "Reload";
+    reload.setAttribute("aria-label", on ? "Loading card" : "Reload card");
+    reload.setAttribute("aria-busy", on ? "true" : "false");
+  }
+
+  function applyData(item) {
+    errorBox.hidden = true;
+    els.stats.style.visibility = "";
+    els.excerpt.style.display = "";
+    var thumb = document.getElementById("thumb");
+    if (thumb) thumb.style.display = "";
+
+    els.avatar.textContent = item.initials;
+    els.avatar.style.background = "hsl(" + item.hue + " 48% 90%)";
+    els.avatar.style.color = "hsl(" + item.hue + " 50% 36%)";
+    els.name.textContent = item.name;
+    els.handle.textContent = item.handle;
+    els.when.textContent = item.read;
+    els.excerpt.textContent = item.excerpt;
+    els.thumbLbl.textContent = item.tag;
+    paintThumb(item.hue);
+
+    // numbers settle in (tabular so no layout shift)
+    animateCount(els.views, item.views);
+    animateCount(els.likes, item.likes);
+    animateCount(els.comments, item.comments);
+  }
+
+  function applyError() {
+    errorBox.hidden = false;
+    // hide the article body parts; keep footer (with reload) usable
+    els.excerpt.style.display = "none";
+    var thumb = document.getElementById("thumb");
+    if (thumb) thumb.style.display = "none";
+    els.stats.style.visibility = "hidden";
+    // keep the header but neutralise the avatar/name to a generic state
+    els.avatar.textContent = "!";
+    els.avatar.style.background = "var(--danger-bg)";
+    els.avatar.style.color = "var(--danger-text)";
+    els.name.textContent = "Unavailable";
+    els.handle.textContent = "—";
+    els.when.textContent = "load failed";
+  }
+
+  // =========================================================
+  //  Orchestration
+  // =========================================================
+  function load() {
+    var token = ++pendingToken;
+    setLoadingButton(true);
+    setStatus("loading", "Loading…");
+    announce("Loading card");
+
+    // Arm the show-delay. If the data beats it, no skeleton ever shows.
+    clearTimeout(loaderState.showTimer);
+    loaderState.visible = false;
+    loaderState.showTimer = setTimeout(function () {
+      if (token !== pendingToken) return;   // a newer load superseded us
+      showSkeleton();
+    }, SHOW_DELAY);
+
+    var t0 = performance.now();
+
+    fakeFetch().then(function (res) {
+      if (token !== pendingToken) return;   // stale; a newer reload is in charge
+      finish(token, function () {
+        applyData(res.item);
+        setStatus("ready", "Loaded in " + res.delay + " ms");
+        announce("Loaded: " + res.item.name + ", " + res.item.read);
+      });
+    }).catch(function (err) {
+      if (token !== pendingToken) return;
+      finish(token, function () {
+        applyError();
+        setStatus("error", "Failed after " + (err && err.delay ? err.delay : Math.round(performance.now() - t0)) + " ms");
+        announce("Failed to load the card. Press reload to try again.");
+      });
+    });
+  }
+
+  // Honor min-visible if the skeleton was shown; otherwise reveal immediately.
+  function finish(token, applyContent) {
+    clearTimeout(loaderState.showTimer);
+
+    function reveal() {
+      if (token !== pendingToken) return;
+      hideSkeleton(applyContent);
+      setLoadingButton(false);
+    }
+
+    if (!loaderState.visible) {
+      // resolved within the show-delay — content just appears, no loader flash
+      // still apply through hideSkeleton path so the enter animation plays
+      reveal();
+      return;
+    }
+
+    var elapsed = performance.now() - loaderState.shownAt;
+    var remaining = Math.max(0, MIN_VISIBLE - elapsed);
+    clearTimeout(loaderState.settleTimer);
+    loaderState.settleTimer = setTimeout(reveal, remaining);
+  }
+
+  // ---- Wire up ----
+  // Reload is a safe, reversible, high-frequency action → respond on pointerdown
+  // for snappier feel, with a click fallback for keyboard/non-pointer activation.
+  var pointerHandled = false;
+  reload.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0) return;
+    if (reload.disabled) return;
+    pointerHandled = true;
+    load();
+    // reset the guard shortly after so a later keyboard activation still works
+    setTimeout(function () { pointerHandled = false; }, 350);
+  });
+  reload.addEventListener("click", function () {
+    if (pointerHandled) { pointerHandled = false; return; }
+    if (reload.disabled) return;
+    load();
+  });
+
+  // ---- Initial paint: start already-loaded so the card reads as content,
+  //      then the user can reload to see the full loading choreography. ----
+  (function init() {
+    var item = DATA[dataIndex % DATA.length];
+    dataIndex++;
+    setStacked(skeleton, true);
+    setStacked(content, false);
+    skeleton.classList.add("is-hidden");
+    applyData(item);
+    setStatus("ready", "Loaded in 0 ms");
+  })();
+
+})();
+</script>
+</body>
+</html>

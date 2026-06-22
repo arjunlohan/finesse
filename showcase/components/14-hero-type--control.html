@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hero</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --ink: hsl(40 8% 11%);
+    --ink-soft: hsl(40 6% 38%);
+    --hairline: hsl(40 10% 88%);
+    --accent: hsl(24 84% 52%);
+    --accent-ink: hsl(24 70% 30%);
+    --accent-wash: hsl(30 60% 96%);
+    --btn-ink: hsl(40 9% 9%);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 36px;
+  }
+
+  .hero {
+    width: 100%;
+    max-width: 408px;
+    text-align: left;
+  }
+
+  /* ---- Eyebrow ---- */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 24px;
+    padding: 6px 13px 6px 11px;
+    border: 1px solid var(--hairline);
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.6);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    cursor: default;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: rise 0.7s var(--ease) 0.05s forwards;
+    transition: border-color 0.4s var(--ease), background 0.4s var(--ease);
+  }
+  .eyebrow:hover { border-color: hsl(30 40% 80%); background: rgba(255, 255, 255, 0.95); }
+
+  .eyebrow .dot {
+    position: relative;
+    width: 7px;
+    height: 7px;
+    flex: none;
+  }
+  .eyebrow .dot::before,
+  .eyebrow .dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .eyebrow .dot::after {
+    animation: pulse 2.6s var(--ease) infinite;
+  }
+
+  /* ---- Headline ---- */
+  .headline {
+    margin: 0 0 20px;
+    font-size: 40px;
+    line-height: 1.06;
+    font-weight: 580;
+    letter-spacing: -0.026em;
+    color: var(--ink);
+  }
+  .headline .ln {
+    display: block;
+    overflow: hidden;
+  }
+  .headline .ln > span {
+    display: block;
+    transform: translateY(112%);
+    animation: lineUp 0.95s var(--ease) forwards;
+  }
+  .headline .ln:nth-child(1) > span { animation-delay: 0.14s; }
+  .headline .ln:nth-child(2) > span { animation-delay: 0.24s; }
+
+  .headline .accent {
+    position: relative;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .headline .accent::after {
+    content: "";
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    bottom: 0.07em;
+    height: 0.42em;
+    background: linear-gradient(var(--accent-wash), var(--accent-wash));
+    border-radius: 2px;
+    z-index: -1;
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: sweep 0.85s var(--ease) 0.78s forwards;
+  }
+
+  /* ---- Paragraph ---- */
+  .lede {
+    margin: 0 0 32px;
+    max-width: 37ch;
+    font-size: 16px;
+    line-height: 1.62;
+    color: var(--ink-soft);
+    font-weight: 400;
+    letter-spacing: -0.003em;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: rise 0.8s var(--ease) 0.5s forwards;
+  }
+
+  /* ---- Actions ---- */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: rise 0.8s var(--ease) 0.62s forwards;
+  }
+
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 550;
+    letter-spacing: -0.006em;
+    padding: 12px 19px;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease),
+                background 0.3s var(--ease), border-color 0.3s var(--ease), color 0.3s var(--ease);
+  }
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--surface), 0 0 0 5.5px hsl(24 84% 52% / 0.55);
+  }
+  .btn:active { transform: translateY(0) scale(0.975); }
+
+  /* Primary */
+  .btn-primary {
+    background: var(--btn-ink);
+    color: hsl(40 20% 97%);
+    box-shadow: 0 1px 2px hsl(40 10% 10% / 0.16), 0 6px 16px hsl(40 10% 10% / 0.1);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1.5px);
+    box-shadow: 0 2px 4px hsl(40 10% 10% / 0.2), 0 12px 26px hsl(40 10% 10% / 0.16);
+  }
+  .btn-primary .arrow {
+    transition: transform 0.45s var(--ease);
+  }
+  .btn-primary:hover .arrow { transform: translateX(3px); }
+  /* sheen */
+  .btn-primary .sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .btn-primary .sheen::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -60%;
+    width: 40%;
+    background: linear-gradient(100deg, transparent, hsl(0 0% 100% / 0.16), transparent);
+    transform: skewX(-18deg);
+  }
+  .btn-primary:hover .sheen::before {
+    animation: shine 0.85s var(--ease);
+  }
+
+  /* Secondary */
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.5);
+    color: var(--ink);
+    border-color: var(--hairline);
+  }
+  .btn-secondary:hover {
+    background: #fff;
+    border-color: hsl(40 8% 78%);
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 14px hsl(40 10% 10% / 0.07);
+  }
+  .btn-secondary .ic {
+    color: var(--ink-soft);
+    transition: transform 0.45s var(--ease), color 0.3s var(--ease);
+  }
+  .btn-secondary:hover .ic { color: var(--ink); }
+  .btn-secondary:hover .ic.play { transform: scale(1.08); }
+
+  /* ---- keyframes ---- */
+  @keyframes rise {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes lineUp {
+    to { transform: translateY(0); }
+  }
+  @keyframes sweep {
+    to { transform: scaleX(1); }
+  }
+  @keyframes shine {
+    from { left: -60%; }
+    to { left: 130%; }
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.55; }
+    70% { transform: scale(2.7); opacity: 0; }
+    100% { transform: scale(2.7); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .eyebrow, .lede, .actions,
+    .headline .ln > span,
+    .headline .accent::after,
+    .eyebrow .dot::after {
+      animation: none !important;
+    }
+    .eyebrow, .lede, .actions { opacity: 1; transform: none; }
+    .headline .ln > span { transform: translateY(0); }
+    .headline .accent::after { transform: scaleX(1); }
+  }
+</style>
+</head>
+<body>
+  <main class="hero">
+    <span class="eyebrow">
+      <span class="dot" aria-hidden="true"></span>
+      Now in early access
+    </span>
+
+    <h1 class="headline">
+      <span class="ln"><span>Ship interfaces</span></span>
+      <span class="ln"><span>that feel <span class="accent">inevitable</span>.</span></span>
+    </h1>
+
+    <p class="lede">
+      A design system and toolkit for teams who sweat the details. Build
+      faster, stay consistent, and let every pixel earn its place.
+    </p>
+
+    <div class="actions">
+      <a href="#" class="btn btn-primary" id="primary">
+        <span class="sheen" aria-hidden="true"></span>
+        Start building
+        <svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+
+      <a href="#" class="btn btn-secondary" id="secondary">
+        <svg class="ic play" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M5 3.5v9l7-4.5-7-4.5z" fill="currentColor"/>
+        </svg>
+        Watch demo
+      </a>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var card = document.querySelector(".hero");
+
+      // Pointer-reactive parallax: subtle depth on the headline + eyebrow.
+      var headline = document.querySelector(".headline");
+      var eyebrow = document.querySelector(".eyebrow");
+      var raf = null, tx = 0, ty = 0, cx = 0, cy = 0;
+
+      function loop() {
+        cx += (tx - cx) * 0.12;
+        cy += (ty - cy) * 0.12;
+        headline.style.transform = "translate3d(" + (cx * 4).toFixed(2) + "px," + (cy * 4).toFixed(2) + "px,0)";
+        eyebrow.style.transform = "translate3d(" + (cx * 2).toFixed(2) + "px," + (cy * 2).toFixed(2) + "px,0)";
+        if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001) {
+          raf = requestAnimationFrame(loop);
+        } else { raf = null; }
+      }
+
+      var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduce && window.matchMedia("(hover: hover)").matches) {
+        document.addEventListener("pointermove", function (e) {
+          var r = card.getBoundingClientRect();
+          tx = (e.clientX - (r.left + r.width / 2)) / r.width;
+          ty = (e.clientY - (r.top + r.height / 2)) / r.height;
+          tx = Math.max(-1, Math.min(1, tx));
+          ty = Math.max(-1, Math.min(1, ty));
+          if (!raf) raf = requestAnimationFrame(loop);
+        });
+        document.addEventListener("pointerleave", function () {
+          tx = 0; ty = 0;
+          if (!raf) raf = requestAnimationFrame(loop);
+        });
+      }
+
+      // Ripple origin for the primary button so the press feels physical.
+      var primary = document.getElementById("primary");
+      primary.addEventListener("pointerdown", function (e) {
+        var r = primary.getBoundingClientRect();
+        var rip = document.createElement("span");
+        rip.style.cssText =
+          "position:absolute;border-radius:50%;pointer-events:none;width:10px;height:10px;" +
+          "background:hsl(0 0% 100% / 0.25);transform:translate(-50%,-50%) scale(0);" +
+          "left:" + (e.clientX - r.left) + "px;top:" + (e.clientY - r.top) + "px;" +
+          "transition:transform .55s cubic-bezier(.22,1,.36,1),opacity .6s ease;";
+        primary.appendChild(rip);
+        requestAnimationFrame(function () {
+          rip.style.transform = "translate(-50%,-50%) scale(18)";
+          rip.style.opacity = "0";
+        });
+        setTimeout(function () { rip.remove(); }, 650);
+      });
+
+      // Prevent the demo links from navigating away.
+      [primary, document.getElementById("secondary")].forEach(function (el) {
+        el.addEventListener("click", function (e) { e.preventDefault(); });
+      });
+    })();
+  </script>
+</body>
+</html>

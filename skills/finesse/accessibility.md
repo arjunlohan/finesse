@@ -19,7 +19,7 @@ A meaningful share of people experience dizziness, nausea, or headaches from mot
 }
 ```
 
-**Reduced motion ≠ no motion — substitute, don't delete.** Movement that carries meaning (where did this come from, what changed) should degrade to an *opacity* fade or an instant change, not disappear. Apple's own guidance is to replace sliding transitions with crossfades, not strip them. Removing meaningful motion entirely can make an interface *more* confusing.
+**Reduced motion ≠ no motion — substitute, don't delete.** Movement that carries meaning (where did this come from, what changed) should degrade to an *opacity* fade or an instant change, not disappear. The guidance is to replace sliding transitions with crossfades, not strip them. Removing meaningful motion entirely can make an interface *more* confusing.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -36,7 +36,7 @@ const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 // React + Motion: const reduce = useReducedMotion();  // then skip transform/scale, keep opacity
 ```
 
-**Especially disable under Reduce Motion:** parallax, multi-axis moves, spinning/vortex effects, large scaling/zooming, and auto-advancing carousels — Apple's named nausea triggers. See [motion.md](motion.md) for the motion catalogue.
+**Especially disable under Reduce Motion:** parallax, multi-axis moves, spinning/vortex effects, large scaling/zooming, and auto-advancing carousels — common nausea triggers. See [motion.md](motion.md) for the motion catalogue.
 
 ## Don't convey information by motion or color alone
 
@@ -87,7 +87,7 @@ Use `forced-color-adjust: none` only on deliberate swatches (color pickers) wher
 The first rule of ARIA is don't use ARIA when a native element does the job — native elements come with focus, keyboard behavior, and roles for free.
 
 - Use real `<button>`, `<a href>`, `<label>`, `<input>`, `<table>`, `<nav>`, `<dialog>` — not `<div onclick>`.
-- Every control has an accessible name: a visible `<label>`, or `aria-label` on **icon-only** buttons (Rauno).
+- Every control has an accessible name: a visible `<label>`, or `aria-label` on **icon-only** buttons.
 - Inline SVG icons: decorative → `aria-hidden="true"`; meaningful → `<title>` (and `role="img"`/`aria-label`).
 - **Announce dynamic changes** to screen readers with a live region — toasts, async validation, and the live-updating numbers that get `tabular-nums` ([typography.md](typography.md)) are invisible to AT without one:
 
@@ -102,7 +102,7 @@ Use `polite` for status, `assertive` only for genuinely urgent errors.
 - Form inputs **≥ 16px** font size or iOS zooms on focus ([typography.md](typography.md)).
 - Hit areas **≥ 44×44px** (≥40 acceptable), no overlaps ([surfaces.md](surfaces.md)).
 - Gate hover styling behind `@media (hover: hover)` so it doesn't stick after a tap ([interaction-states.md](interaction-states.md)).
-- If you disable the iOS tap highlight (`-webkit-tap-highlight-color: transparent`), you **must** supply your own press feedback (Rauno).
+- If you disable the iOS tap highlight (`-webkit-tap-highlight-color: transparent`), you **must** supply your own press feedback.
 
 ## Quick audit
 
@@ -116,4 +116,4 @@ Use `polite` for status, `assertive` only for genuinely urgent errors.
 - [ ] Dynamic updates announced via `aria-live`
 - [ ] Inputs ≥ 16px; hit areas ≥ 40–44px
 
-→ Vestibular safety and the "substitute, don't delete" principle are echoed by Apple HIG, Material, web.dev, Josh Comeau, and Cassie Evans — see [sources.md](sources.md).
+→ Vestibular safety and the "substitute, don't delete" principle are widely recommended across accessibility guidance.

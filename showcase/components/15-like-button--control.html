@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Like</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --card: #ffffff;
+    --ink: hsl(225 14% 14%);
+    --ink-soft: hsl(225 8% 46%);
+    --ink-faint: hsl(225 7% 62%);
+    --hairline: hsl(225 14% 92%);
+    --hairline-strong: hsl(225 14% 86%);
+
+    /* like — warm rose/crimson */
+    --like: hsl(347 78% 54%);
+    --like-hi: hsl(349 84% 61%);
+    --like-lo: hsl(345 72% 46%);
+    --like-soft: hsl(347 80% 96%);
+    --like-ring: hsl(347 80% 54% / 0.30);
+
+    /* spark palette for the burst */
+    --spark-a: hsl(347 84% 60%);
+    --spark-b: hsl(28 92% 60%);
+    --spark-c: hsl(45 95% 58%);
+    --spark-d: hsl(320 70% 64%);
+
+    --focus: hsl(222 90% 56%);
+
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-pop: cubic-bezier(0.22, 1.4, 0.36, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; height: 100%; }
+
+  body {
+    background: var(--surface);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 44px 28px;
+    min-height: 100vh;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 396px;
+  }
+
+  /* ---------- the post card ---------- */
+  .post {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    box-shadow:
+      0 1px 1px hsl(225 20% 20% / 0.025),
+      0 10px 30px -14px hsl(225 30% 20% / 0.16);
+    overflow: hidden;
+  }
+
+  .post__head {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 16px 18px 12px;
+  }
+  .avatar {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    background:
+      radial-gradient(120% 120% at 30% 20%, hsl(266 70% 64%), hsl(238 68% 52%) 70%);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.25),
+      0 2px 5px hsl(238 50% 40% / 0.28);
+    user-select: none;
+  }
+  .meta { min-width: 0; }
+  .meta__name {
+    font-size: 14.5px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.006em;
+    color: var(--ink);
+  }
+  .meta__sub {
+    margin-top: 2px;
+    font-size: 12.5px;
+    line-height: 1.2;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .meta__dot { width: 2.5px; height: 2.5px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+
+  .post__body {
+    padding: 2px 18px 14px;
+  }
+  .post__text {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: hsl(225 12% 24%);
+    letter-spacing: -0.003em;
+  }
+
+  .post__media {
+    margin: 12px 18px 4px;
+    height: 156px;
+    border-radius: 14px;
+    border: 1px solid var(--hairline);
+    overflow: hidden;
+    position: relative;
+    background:
+      radial-gradient(130% 120% at 12% 8%, hsl(28 92% 66%), transparent 52%),
+      radial-gradient(120% 130% at 92% 18%, hsl(331 78% 64%), transparent 50%),
+      radial-gradient(150% 150% at 70% 110%, hsl(255 70% 60%), transparent 55%),
+      linear-gradient(140deg, hsl(214 80% 56%), hsl(268 64% 52%));
+  }
+  .post__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(60% 60% at 50% 38%, hsl(0 0% 100% / 0.16), transparent 70%),
+      linear-gradient(180deg, transparent 55%, hsl(238 40% 20% / 0.18));
+    pointer-events: none;
+  }
+
+  /* ---------- the action bar ---------- */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 12px 13px;
+    margin-top: 6px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .act {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    color: var(--ink-soft);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 11px;
+    position: relative;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background 180ms var(--ease-soft),
+      color 180ms var(--ease-soft),
+      transform 240ms var(--ease-spring);
+    user-select: none;
+  }
+  .act:hover { background: hsl(225 16% 96.5%); color: var(--ink); }
+  .act:active { transform: scale(0.96); }
+  .act:focus-visible {
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus);
+  }
+
+  .act__ico { width: 21px; height: 21px; display: block; position: relative; z-index: 1; }
+  .act__ico svg { width: 100%; height: 100%; display: block; }
+
+  .act__label {
+    font-size: 13.5px;
+    font-weight: 550;
+    letter-spacing: -0.004em;
+    line-height: 1;
+    color: inherit;
+  }
+
+  /* push share to the right */
+  .act--share { margin-left: auto; }
+
+  /* ----- the like button specifics ----- */
+  .like {
+    color: var(--ink-soft);
+  }
+  .like:hover { background: var(--like-soft); color: var(--like); }
+  .like[aria-pressed="true"] { color: var(--like); }
+  .like[aria-pressed="true"]:hover { background: var(--like-soft); }
+
+  /* heart svg: two stacked layers — outline + fill */
+  .heart {
+    position: relative;
+    width: 21px;
+    height: 21px;
+    transform-origin: 50% 58%;
+  }
+  .heart svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .heart__outline {
+    color: currentColor;
+    opacity: 1;
+    transition: opacity 160ms var(--ease-soft);
+  }
+  .heart__fill {
+    color: var(--like);
+    transform: scale(0);
+    transform-origin: 50% 56%;
+    opacity: 0;
+    transition:
+      transform 260ms var(--ease-soft),
+      opacity 140ms var(--ease-soft);
+  }
+  .like[aria-pressed="true"] .heart__outline { opacity: 0; }
+  .like[aria-pressed="true"] .heart__fill { opacity: 1; }
+
+  /* the satisfying pop when liking */
+  .like[data-anim="on"] .heart__fill {
+    transform: scale(1);
+    animation: heartPop 460ms var(--ease-pop) both;
+  }
+  /* gentle return when unliking — no big bounce, just a soft settle */
+  .like[data-anim="off"] .heart__fill {
+    animation: heartOff 220ms var(--ease-soft) both;
+  }
+
+  @keyframes heartPop {
+    0%   { transform: scale(0); }
+    34%  { transform: scale(1.28); }
+    62%  { transform: scale(0.9); }
+    100% { transform: scale(1); }
+  }
+  @keyframes heartOff {
+    0%   { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  /* ring pulse that radiates out of the heart on like */
+  .ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 21px;
+    height: 21px;
+    margin: -10.5px 0 0 -10.5px;
+    border-radius: 50%;
+    border: 2px solid var(--like);
+    transform: scale(0.2);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .like[data-anim="on"] .ring {
+    animation: ringOut 540ms var(--ease-soft) both;
+  }
+  @keyframes ringOut {
+    0%   { transform: scale(0.2); opacity: 0.55; }
+    70%  { opacity: 0.18; }
+    100% { transform: scale(2.6); opacity: 0; }
+  }
+
+  /* burst container — particles only fire on the FIRST like, kept calm after */
+  .burst {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .spark {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius: 50%;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .like[data-burst="go"] .spark {
+    animation: sparkFly var(--dur) var(--ease-pop) both;
+    animation-delay: var(--delay);
+  }
+  @keyframes sparkFly {
+    0% {
+      transform: translate(0, 0) scale(0.2);
+      opacity: 0;
+    }
+    18% { opacity: 1; }
+    100% {
+      transform: translate(var(--tx), var(--ty)) scale(var(--sc));
+      opacity: 0;
+    }
+  }
+
+  /* the count — rolling digits */
+  .count {
+    position: relative;
+    height: 16px;
+    min-width: 1ch;
+    overflow: hidden;
+    display: inline-block;
+    text-align: left;
+  }
+  .count__roll {
+    display: flex;
+    flex-direction: column;
+    transition: transform 420ms var(--ease-pop);
+  }
+  .count__val {
+    height: 16px;
+    line-height: 16px;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* footer caption */
+  .post__foot {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 18px 16px;
+    margin-top: -2px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    min-height: 16px;
+  }
+  .post__foot b { color: var(--ink-soft); font-weight: 600; }
+  .who {
+    display: inline-flex;
+    align-items: center;
+    transition: opacity 240ms var(--ease-soft), transform 320ms var(--ease-spring);
+  }
+  .who[data-show="false"] { opacity: 0; transform: translateY(3px); }
+  .who[data-show="true"]  { opacity: 1; transform: translateY(0); }
+
+  .stack {
+    display: inline-flex;
+    margin-right: 6px;
+  }
+  .stack i {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1.5px solid var(--card);
+    margin-left: -5px;
+    background: var(--ink-faint);
+  }
+  .stack i:first-child { margin-left: 0; }
+  .stack i:nth-child(1) { background: radial-gradient(120% 120% at 30% 20%, hsl(347 80% 64%), hsl(347 70% 50%)); }
+  .stack i:nth-child(2) { background: radial-gradient(120% 120% at 30% 20%, hsl(28 88% 64%), hsl(20 80% 52%)); }
+  .stack i:nth-child(3) { background: radial-gradient(120% 120% at 30% 20%, hsl(214 78% 62%), hsl(238 64% 52%)); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <article class="post">
+      <header class="post__head">
+        <div class="avatar" aria-hidden="true">MK</div>
+        <div class="meta">
+          <div class="meta__name">Mira Kavanagh</div>
+          <div class="meta__sub">
+            <span>@mirakav</span>
+            <span class="meta__dot"></span>
+            <span>2h</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="post__body">
+        <p class="post__text">First light over the ridge after three days of rain. Worth every soggy boot. 🏔️</p>
+      </div>
+      <div class="post__media" aria-hidden="true"></div>
+
+      <div class="actions">
+        <button class="act like" id="likeBtn" type="button" aria-pressed="false" aria-label="Like this post">
+          <span class="act__ico" aria-hidden="true">
+            <span class="ring"></span>
+            <span class="burst" id="burst"></span>
+            <span class="heart">
+              <svg class="heart__outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20.5C12 20.5 3.5 15 3.5 8.8 3.5 6.2 5.6 4.2 8.1 4.2c1.6 0 3.1.8 3.9 2.1.8-1.3 2.3-2.1 3.9-2.1 2.5 0 4.6 2 4.6 4.6C20.5 15 12 20.5 12 20.5Z"/>
+              </svg>
+              <svg class="heart__fill" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 20.5C12 20.5 3.5 15 3.5 8.8 3.5 6.2 5.6 4.2 8.1 4.2c1.6 0 3.1.8 3.9 2.1.8-1.3 2.3-2.1 3.9-2.1 2.5 0 4.6 2 4.6 4.6C20.5 15 12 20.5 12 20.5Z"/>
+              </svg>
+            </span>
+          </span>
+          <span class="act__label">
+            <span class="count" id="count" aria-hidden="true">
+              <span class="count__roll" id="roll"></span>
+            </span>
+          </span>
+        </button>
+
+        <button class="act" type="button" aria-label="Comment on this post">
+          <span class="act__ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 9.06 9.06 0 0 1-3.9-.86L3 21l1.86-5.6A8.38 8.38 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5Z"/>
+            </svg>
+          </span>
+          <span class="act__label">18</span>
+        </button>
+
+        <button class="act act--share" type="button" aria-label="Share this post">
+          <span class="act__ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <div class="post__foot">
+        <span class="who" id="who" data-show="true">
+          <span class="stack" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span id="whoText">Liked by <b>aria</b>, <b>devon</b> and 126 others</span>
+        </span>
+      </div>
+    </article>
+  </div>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('likeBtn');
+      var roll = document.getElementById('roll');
+      var burst = document.getElementById('burst');
+      var who = document.getElementById('who');
+      var whoText = document.getElementById('whoText');
+
+      var BASE = 128;          // count when not liked
+      var liked = false;
+      var hasCelebrated = false; // confetti only the very first time
+      var animTimer = null;
+      var burstTimer = null;
+
+      var reduce = window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function fmt(n) {
+        if (n >= 1000) {
+          var k = n / 1000;
+          return (k >= 10 ? Math.round(k) : (Math.round(k * 10) / 10)) + 'K';
+        }
+        return String(n);
+      }
+
+      /* ---- rolling counter: stack prev + next, slide up/down ---- */
+      var current = BASE;
+      function paintCount(initial) {
+        roll.innerHTML =
+          '<span class="count__val">' + fmt(current) + '</span>';
+        roll.style.transform = 'translateY(0)';
+      }
+      paintCount(true);
+
+      function setCount(next) {
+        if (next === current) return;
+        var up = next > current;
+        var a = '<span class="count__val">' + fmt(current) + '</span>';
+        var b = '<span class="count__val">' + fmt(next) + '</span>';
+        // place the incoming value above (going up) or below (going down)
+        if (up) {
+          roll.innerHTML = b + a;
+          roll.style.transition = 'none';
+          roll.style.transform = 'translateY(-16px)';
+          // force reflow then animate to reveal the new (top) value
+          void roll.offsetHeight;
+          roll.style.transition = '';
+          roll.style.transform = 'translateY(0)';
+        } else {
+          roll.innerHTML = a + b;
+          roll.style.transition = 'none';
+          roll.style.transform = 'translateY(0)';
+          void roll.offsetHeight;
+          roll.style.transition = '';
+          roll.style.transform = 'translateY(-16px)';
+        }
+        current = next;
+        // settle DOM back to single value after the slide finishes
+        window.clearTimeout(setCount._t);
+        setCount._t = window.setTimeout(paintCount, 460);
+      }
+
+      /* ---- build the spark burst (first like only) ---- */
+      var SPARK_COLORS = ['var(--spark-a)','var(--spark-b)','var(--spark-c)','var(--spark-d)','var(--spark-a)','var(--spark-c)'];
+      function fireBurst() {
+        burst.innerHTML = '';
+        var N = 11;
+        for (var i = 0; i < N; i++) {
+          var s = document.createElement('span');
+          s.className = 'spark';
+          var ang = (Math.PI * 2 * i) / N + (Math.random() - 0.5) * 0.4;
+          var dist = 22 + Math.random() * 12;
+          var size = 4 + Math.random() * 4;
+          var tx = Math.cos(ang) * dist;
+          var ty = Math.sin(ang) * dist - 4; // slight upward bias
+          s.style.width = size + 'px';
+          s.style.height = size + 'px';
+          s.style.marginLeft = (-size / 2) + 'px';
+          s.style.marginTop = (-size / 2) + 'px';
+          s.style.background = SPARK_COLORS[i % SPARK_COLORS.length];
+          s.style.setProperty('--tx', tx.toFixed(1) + 'px');
+          s.style.setProperty('--ty', ty.toFixed(1) + 'px');
+          s.style.setProperty('--sc', (0.3 + Math.random() * 0.5).toFixed(2));
+          s.style.setProperty('--dur', (520 + Math.random() * 220).toFixed(0) + 'ms');
+          s.style.setProperty('--delay', (Math.random() * 40).toFixed(0) + 'ms');
+          burst.appendChild(s);
+        }
+        btn.setAttribute('data-burst', 'go');
+        window.clearTimeout(burstTimer);
+        burstTimer = window.setTimeout(function () {
+          btn.removeAttribute('data-burst');
+          burst.innerHTML = '';
+        }, 820);
+      }
+
+      function updateWho() {
+        if (liked) {
+          whoText.innerHTML = 'Liked by <b>you</b>, <b>aria</b> and 127 others';
+        } else {
+          whoText.innerHTML = 'Liked by <b>aria</b>, <b>devon</b> and 126 others';
+        }
+      }
+
+      function toggle() {
+        liked = !liked;
+        btn.setAttribute('aria-pressed', liked ? 'true' : 'false');
+        btn.setAttribute('aria-label', liked ? 'Unlike this post' : 'Like this post');
+
+        setCount(liked ? BASE + 1 : BASE);
+        updateWho();
+
+        // heart pop / settle
+        window.clearTimeout(animTimer);
+        btn.removeAttribute('data-anim');
+        // reflow so the animation can restart even on rapid toggles
+        void btn.offsetWidth;
+        btn.setAttribute('data-anim', liked ? 'on' : 'off');
+        animTimer = window.setTimeout(function () {
+          btn.removeAttribute('data-anim');
+        }, 560);
+
+        // celebration: full burst ONLY the first time a like happens.
+        // every subsequent like still gets the crisp heart pop + ring,
+        // which stays satisfying without becoming noisy.
+        if (liked && !hasCelebrated && !reduce) {
+          hasCelebrated = true;
+          fireBurst();
+        }
+      }
+
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        toggle();
+      });
+
+      // double-tap / double-click should not stack two likes weirdly;
+      // each click is a clean toggle, which the above already guarantees.
+
+      updateWho();
+    })();
+  </script>
+</body>
+</html>

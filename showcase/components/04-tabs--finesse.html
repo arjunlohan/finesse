@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tabs</title>
+<style>
+  /* ============================================================
+     Tokens
+     ============================================================ */
+  :root {
+    /* Motion — the shared contract */
+    --duration-instant: 0ms;
+    --duration-fast:    150ms;
+    --duration-base:    200ms;
+    --duration-slow:    300ms;
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1);
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15);
+    --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Surface — warm near-white page; cool, faintly-tinted neutrals */
+    --bg:          hsl(40 12% 98%);
+    --surface:     hsl(220 30% 99.5%);
+    --track:       hsl(220 22% 95%);
+    --track-ring:  hsl(220 20% 90%);
+
+    /* Indicator (the moving thumb) */
+    --thumb:       hsl(220 30% 100%);
+
+    /* Text — three tiers, never pure black */
+    --text-primary:   hsl(222 24% 14%);
+    --text-secondary: hsl(220 12% 42%);
+    --text-tertiary:  hsl(220 10% 58%);
+
+    /* Accent */
+    --accent:      hsl(231 70% 56%);
+    --accent-soft: hsl(231 72% 60%);
+
+    /* Concentric radii: track 14, inner thumb = 14 − 4(pad) = 10 */
+    --radius-card:  20px;
+    --radius-track: 14px;
+    --radius-thumb: 10px;
+    --radius-panel: 14px;
+
+    /* Spacing scale (4px base, non-linear) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: var(--space-6) var(--space-5);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* ============================================================
+     Card shell
+     ============================================================ */
+  .card {
+    width: 100%;
+    max-width: 476px;
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    padding: var(--space-5);
+    /* Layered, hue-tinted shadows — light from above; never pure black */
+    box-shadow:
+      0 0 0 1px hsl(220 24% 88% / 0.7),
+      0 1px 2px hsl(220 30% 20% / 0.04),
+      0 4px 10px hsl(220 30% 20% / 0.05),
+      0 16px 32px -12px hsl(220 30% 20% / 0.10);
+  }
+
+  /* ============================================================
+     Tablist — the segmented track
+     ============================================================ */
+  .tabs {
+    position: relative;
+    display: flex;
+    padding: var(--space-1);                 /* 4px → drives concentric inner radius */
+    gap: 0;                                   /* no dead zones: padding lives in tabs */
+    background: var(--track);
+    border-radius: var(--radius-track);
+    box-shadow:
+      inset 0 0 0 1px var(--track-ring),
+      inset 0 1px 2px hsl(220 24% 60% / 0.10);
+  }
+
+  /* The moving indicator (thumb). Positioned/sized by JS via CSS vars,
+     animated only with transform + width for a single smooth glide. */
+  .thumb {
+    position: absolute;
+    top: var(--space-1);
+    left: 0;
+    height: calc(100% - var(--space-1) * 2);
+    width: var(--thumb-w, 0px);
+    border-radius: var(--radius-thumb);
+    background: var(--thumb);
+    box-shadow:
+      0 0 0 1px hsl(220 24% 86% / 0.9),
+      0 1px 1px hsl(220 30% 30% / 0.04),
+      0 2px 6px hsl(220 30% 30% / 0.10);
+    transform: translateX(var(--thumb-x, 0px));
+    /* On-screen repositioning → ease-in-out. Width morph matches. */
+    transition:
+      transform var(--duration-base) var(--ease-in-out),
+      width     var(--duration-base) var(--ease-in-out);
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* Pre-measure state: no flash of an unplaced thumb */
+  .thumb[data-init="false"] { opacity: 0; }
+
+  /* A faint pressed "give" on the whole track when a tab is actively pressed */
+  .thumb[data-press="true"] {
+    transform: translateX(var(--thumb-x, 0px)) scaleX(0.97);
+  }
+
+  .tab {
+    position: relative;
+    z-index: 1;
+    /* Size each tab from its CONTENT, then grow equally to fill the track.
+       Equal-width tabs (flex:1 1 0) squeezed the busy Activity tab to a 4px
+       buffer while Team floated with 26px; content-basis growth gives every
+       tab the same whitespace around its icon+label+badge. */
+    flex: 1 1 auto;
+    min-width: 0;                            /* allow graceful shrink if cramped */
+    /* No dead zones: the full segment is the hit target, ≥ 40px tall */
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: var(--space-2) 12px;
+    border: 0;
+    background: transparent;
+    border-radius: var(--radius-thumb);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.006em;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      color     var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  /* Optical: pull the label a hair toward the icon so the icon+label pair
+     reads centered in the segment rather than the text block alone. */
+  .tab > span:not(.count) { margin-left: -1px; }
+
+  .tab svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    /* tint follows text color, animated with the label */
+    color: var(--text-tertiary);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  /* Hover — gated so it never sticks on touch */
+  @media (hover: hover) {
+    .tab:hover { color: var(--text-primary); }
+    .tab:hover svg { color: var(--text-secondary); }
+  }
+
+  /* Active tab: color + weight carry meaning, never motion/color alone.
+     aria-selected drives everything. */
+  .tab[aria-selected="true"] {
+    color: var(--text-primary);
+  }
+  .tab[aria-selected="true"] svg {
+    color: var(--accent);
+  }
+
+  /* Press feedback — subtle "give", never below 0.95 */
+  .tab:active { transform: scale(0.96); }
+
+  /* Keyboard focus only — radius-aware ring via box-shadow */
+  .tab:focus { outline: none; }
+  .tab:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--accent-soft);
+  }
+
+  /* The count pill — tabular figures so it never reflows the label */
+  .count {
+    font-variant-numeric: tabular-nums;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 1px 5px;
+    border-radius: 999px;
+    color: var(--text-tertiary);
+    background: hsl(220 16% 88% / 0.7);
+    transition:
+      color      var(--duration-fast) var(--ease-standard),
+      background var(--duration-fast) var(--ease-standard);
+  }
+  .tab[aria-selected="true"] .count {
+    color: var(--accent);
+    background: hsl(231 70% 56% / 0.12);
+  }
+
+  /* ============================================================
+     Panels
+     ============================================================ */
+  .panels {
+    position: relative;
+    margin-top: var(--space-5);
+  }
+
+  .panel {
+    border-radius: var(--radius-panel);
+  }
+  .panel[hidden] { display: none; }
+
+  /* Enter animation — opacity + small translateY, decelerating in.
+     Keyframe is legitimate here: a one-shot reveal that is replaced,
+     not reversed, when you switch tabs. */
+  .panel:not([hidden]) {
+    animation: panel-in var(--duration-base) var(--ease-out) both;
+  }
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Direction-aware variants set by JS so content tracks tab direction */
+  .panel.dir-right:not([hidden]) { animation-name: panel-in-right; }
+  .panel.dir-left:not([hidden])  { animation-name: panel-in-left; }
+  @keyframes panel-in-right {
+    from { opacity: 0; transform: translateX(10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes panel-in-left {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .panel-card {
+    background: var(--surface);
+    border-radius: var(--radius-panel);
+    box-shadow: inset 0 0 0 1px hsl(220 20% 92%);
+    padding: var(--space-5);
+    min-height: 168px;
+  }
+
+  .panel-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin: 0 0 var(--space-3);
+  }
+  .panel-eyebrow .dot {
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+
+  .panel-title {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: var(--text-primary);
+    margin: 0 0 var(--space-2);
+    text-wrap: balance;
+  }
+
+  .panel-body {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 46ch;
+    text-wrap: pretty;
+  }
+
+  /* A small stat row to give numbers somewhere to be tabular */
+  .panel-stats {
+    display: flex;
+    gap: var(--space-5);
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid hsl(220 18% 93%);
+  }
+  .stat { display: grid; gap: 2px; }
+  .stat-value {
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+  }
+
+  /* ============================================================
+     Reduced motion — substitute fades / instant, don't delete meaning
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    .thumb {
+      transition: opacity var(--duration-fast) linear;
+    }
+    .thumb[data-press="true"] {
+      transform: translateX(var(--thumb-x, 0px));
+    }
+    .tab { transition: color var(--duration-fast) linear; }
+    .tab:active { transform: none; }
+    .panel:not([hidden]),
+    .panel.dir-right:not([hidden]),
+    .panel.dir-left:not([hidden]) {
+      animation: panel-fade var(--duration-fast) linear both;
+    }
+    @keyframes panel-fade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div
+      class="tabs"
+      role="tablist"
+      aria-label="Workspace sections"
+      aria-orientation="horizontal"
+    >
+      <span class="thumb" data-init="false" aria-hidden="true"></span>
+
+      <button
+        class="tab"
+        role="tab"
+        id="tab-overview"
+        aria-controls="panel-overview"
+        aria-selected="true"
+        tabindex="0"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="9" rx="1.5"></rect>
+          <rect x="14" y="3" width="7" height="5" rx="1.5"></rect>
+          <rect x="14" y="12" width="7" height="9" rx="1.5"></rect>
+          <rect x="3" y="16" width="7" height="5" rx="1.5"></rect>
+        </svg>
+        <span>Overview</span>
+      </button>
+
+      <button
+        class="tab"
+        role="tab"
+        id="tab-activity"
+        aria-controls="panel-activity"
+        aria-selected="false"
+        tabindex="-1"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+        </svg>
+        <span>Activity</span>
+        <span class="count">12</span>
+      </button>
+
+      <button
+        class="tab"
+        role="tab"
+        id="tab-team"
+        aria-controls="panel-team"
+        aria-selected="false"
+        tabindex="-1"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <span>Team</span>
+      </button>
+
+      <button
+        class="tab"
+        role="tab"
+        id="tab-settings"
+        aria-controls="panel-settings"
+        aria-selected="false"
+        tabindex="-1"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Settings</span>
+      </button>
+    </div>
+
+    <div class="panels">
+      <section
+        class="panel"
+        role="tabpanel"
+        id="panel-overview"
+        aria-labelledby="tab-overview"
+        tabindex="0"
+      >
+        <div class="panel-card">
+          <p class="panel-eyebrow"><span class="dot"></span> Workspace</p>
+          <h2 class="panel-title">Everything at a glance</h2>
+          <p class="panel-body">A live snapshot of what's moving across your workspace this week — open threads, shipped work, and the people pushing it forward.</p>
+          <div class="panel-stats">
+            <div class="stat"><span class="stat-value">248</span><span class="stat-label">Tasks done</span></div>
+            <div class="stat"><span class="stat-value">17</span><span class="stat-label">In review</span></div>
+            <div class="stat"><span class="stat-value">96%</span><span class="stat-label">On track</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="panel"
+        role="tabpanel"
+        id="panel-activity"
+        aria-labelledby="tab-activity"
+        tabindex="0"
+        hidden
+      >
+        <div class="panel-card">
+          <p class="panel-eyebrow"><span class="dot"></span> Last 24 hours</p>
+          <h2 class="panel-title">A steady stream of updates</h2>
+          <p class="panel-body">Twelve new events since you last looked — commits merged, comments resolved, and a deploy that landed clean to production.</p>
+          <div class="panel-stats">
+            <div class="stat"><span class="stat-value">12</span><span class="stat-label">New events</span></div>
+            <div class="stat"><span class="stat-value">5</span><span class="stat-label">Mentions</span></div>
+            <div class="stat"><span class="stat-value">1</span><span class="stat-label">Deploy</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="panel"
+        role="tabpanel"
+        id="panel-team"
+        aria-labelledby="tab-team"
+        tabindex="0"
+        hidden
+      >
+        <div class="panel-card">
+          <p class="panel-eyebrow"><span class="dot"></span> People</p>
+          <h2 class="panel-title">Eight collaborators, one room</h2>
+          <p class="panel-body">Your team is small and fast. Roles are clear, ownership is shared, and nobody is waiting on a handoff to keep things moving.</p>
+          <div class="panel-stats">
+            <div class="stat"><span class="stat-value">8</span><span class="stat-label">Members</span></div>
+            <div class="stat"><span class="stat-value">3</span><span class="stat-label">Online now</span></div>
+            <div class="stat"><span class="stat-value">2</span><span class="stat-label">Invites out</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="panel"
+        role="tabpanel"
+        id="panel-settings"
+        aria-labelledby="tab-settings"
+        tabindex="0"
+        hidden
+      >
+        <div class="panel-card">
+          <p class="panel-eyebrow"><span class="dot"></span> Preferences</p>
+          <h2 class="panel-title">Tuned to how you work</h2>
+          <p class="panel-body">Notifications, theme, and keyboard shortcuts are all yours to shape. Changes save the moment you make them — no separate confirm step.</p>
+          <div class="panel-stats">
+            <div class="stat"><span class="stat-value">6</span><span class="stat-label">Integrations</span></div>
+            <div class="stat"><span class="stat-value">24</span><span class="stat-label">Shortcuts</span></div>
+            <div class="stat"><span class="stat-value">2</span><span class="stat-label">Sessions</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  const tablist = document.querySelector('[role="tablist"]');
+  const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+  const thumb = tablist.querySelector('.thumb');
+  const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')));
+
+  let current = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+  if (current < 0) current = 0;
+
+  // --- Position the moving indicator under a given tab -----------------
+  // The thumb is anchored at left:0 inside the padded track; a tab's
+  // offsetLeft already includes that padding, so translate by offsetLeft
+  // minus the track's left padding to land flush on the tab.
+  function moveThumb(index) {
+    const tab = tabs[index];
+    // The thumb is anchored at left:0 in the track's padding box, and a tab's
+    // offsetLeft is measured from that same edge — so translate straight to it.
+    // (Subtracting the padding shoved every thumb a padding-width left of its
+    // tab: the first tab kissed the track edge while the last gained a double
+    // gap, and centered content like the count badge sat off-centre.)
+    thumb.style.setProperty('--thumb-x', tab.offsetLeft + 'px');
+    thumb.style.setProperty('--thumb-w', tab.offsetWidth + 'px');
+  }
+
+  // --- Select a tab (the single source of truth) ----------------------
+  function selectTab(index, { focus = false, animateDir = true } = {}) {
+    if (index === current && thumb.dataset.init === 'true') {
+      if (focus) tabs[index].focus();
+      return;
+    }
+
+    const prev = current;
+    current = index;
+
+    tabs.forEach((tab, i) => {
+      const selected = i === index;
+      tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+      tab.tabIndex = selected ? 0 : -1;
+    });
+
+    // Direction-aware panel reveal: content slides in from the side the
+    // new tab sits relative to the old one (preserves spatial map).
+    const dir = index > prev ? 'right' : 'left';
+    panels.forEach((panel, i) => {
+      if (i === index) {
+        panel.classList.remove('dir-left', 'dir-right');
+        if (animateDir) {
+          // Force reflow so the animation restarts even on rapid switches.
+          void panel.offsetWidth;
+          panel.classList.add(dir === 'right' ? 'dir-right' : 'dir-left');
+        }
+        panel.hidden = false;
+      } else {
+        panel.hidden = true;
+        panel.classList.remove('dir-left', 'dir-right');
+      }
+    });
+
+    moveThumb(index);
+    if (focus) tabs[index].focus();
+  }
+
+  // --- Pointer interactions -------------------------------------------
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => selectTab(i, { focus: true }));
+
+    // Press "give" on the whole thumb while the active segment is held.
+    tab.addEventListener('pointerdown', () => {
+      if (i === current) thumb.dataset.press = 'true';
+    });
+  });
+  const releasePress = () => { thumb.dataset.press = 'false'; };
+  window.addEventListener('pointerup', releasePress);
+  window.addEventListener('pointercancel', releasePress);
+
+  // --- Keyboard: roving tabindex + arrow navigation -------------------
+  // Arrow keys move selection instantly (keyboard-initiated → immediate),
+  // Home/End jump to ends. Selection follows focus (automatic activation).
+  tablist.addEventListener('keydown', (e) => {
+    let next = null;
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        next = (current + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        next = (current - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    selectTab(next, { focus: true });
+  });
+
+  // --- Initial placement -----------------------------------------------
+  // Place synchronously with the transition suppressed, so the thumb never
+  // animates in from x=0 on first paint. Re-enable the glide on the next
+  // frame. Synchronous placement (not nested-RAF) keeps init reliable even
+  // when rAF is throttled in a backgrounded tab.
+  function place() {
+    const prev = thumb.style.transition;
+    thumb.style.transition = 'none';
+    moveThumb(current);
+    thumb.dataset.init = 'true';
+    // Force a reflow so the no-transition placement commits before we
+    // restore the transition — otherwise the two writes coalesce.
+    void thumb.offsetWidth;
+    thumb.style.transition = prev;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', place, { once: true });
+  } else {
+    place();
+  }
+  // Re-measure once fonts/metrics settle (system fonts are usually instant,
+  // but this guards against a late layout shift mis-sizing the thumb).
+  window.addEventListener('load', () => moveThumb(current), { once: true });
+
+  // Keep the indicator pinned to its tab on resize (no animation jump:
+  // disable transition during the snap, then restore).
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    const prevTransition = thumb.style.transition;
+    thumb.style.transition = 'none';
+    moveThumb(current);
+    // Restore on the next frame so subsequent moves animate again.
+    if (resizeTimer) cancelAnimationFrame(resizeTimer);
+    resizeTimer = requestAnimationFrame(() => {
+      thumb.style.transition = prevTransition;
+    });
+  });
+})();
+</script>
+</body>
+</html>

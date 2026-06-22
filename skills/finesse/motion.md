@@ -22,7 +22,7 @@ The shared tokens — referenced throughout this file, never re-invented:
 
 ## Duration
 
-Most UI motion lives in **150–300ms**. That window is not arbitrary — it is where the field converges. Rauno Freiberg treats **≤200ms** as the threshold for motion that reads as "immediate." Emil Kowalski keeps interface transitions **under 300ms**, as does Vercel's Geist guidance. Josh Comeau's default band for component transitions is **~250–450ms**. Val Head's general range is **200–500ms**. Material Design calls medium transitions **250–400ms** and uses **300ms as the canonical desktop default**. The consensus: a UI transition that crosses **~400ms starts to feel sluggish**, and one that finishes in **~100ms reads as instantaneous** (RAIL's 100ms response budget). Anything slower than 400ms had better be moving a large surface a long way.
+Most UI motion lives in **150–300ms**. That window is not arbitrary — it is where the field converges. A common threshold for motion that reads as "immediate" is **≤200ms**, and interface transitions are typically kept **under 300ms**. A frequent default band for component transitions is **~250–450ms**, with a general range of **200–500ms**. Medium transitions are often **250–400ms**, with **300ms a canonical desktop default**. The consensus: a UI transition that crosses **~400ms starts to feel sluggish**, and one that finishes in **~100ms reads as instantaneous** (RAIL's 100ms response budget). Anything slower than 400ms had better be moving a large surface a long way.
 
 That gives you the token scale, and each tier has a job:
 
@@ -36,7 +36,7 @@ That gives you the token scale, and each tier has a job:
 
 ### Duration scales with distance and size
 
-A control that moves 8px and a sheet that slides 600px should **not** take the same time. Material formalizes this with a ladder from roughly **50ms for the smallest changes up to ~1000ms for large, full-screen expansive motion** — velocity stays perceptually constant, so a bigger move simply takes longer. Apply it like this:
+A control that moves 8px and a sheet that slides 600px should **not** take the same time. This is often formalized as a ladder from roughly **50ms for the smallest changes up to ~1000ms for large, full-screen expansive motion** — velocity stays perceptually constant, so a bigger move simply takes longer. Apply it like this:
 
 | Travel / surface | Duration |
 | --- | --- |
@@ -74,7 +74,7 @@ Duration choices are moot under reduced motion; the substitution happens at the 
 
 ## Easing
 
-> "Easing is the most important part of any animation." — Emil Kowalski
+> "Easing is the most important part of any animation."
 
 Linear motion does not exist in the physical world; everything accelerates and decelerates. Getting duration right but easing wrong yields motion that is technically smooth and emotionally dead. **Direction of travel picks the curve** — this is the rule that organizes the whole system:
 
@@ -144,16 +144,16 @@ Durations and cubic-beziers describe motion by *time*; springs describe it by *p
 
 Two parameterizations, same idea:
 
-- **Response + bounce** (Apple's `UISpringTimingParameters`, and Motion's modern `spring`): `response` is roughly how long the spring takes to reach its target; `bounce` is how much it overshoots (0 = no overshoot, ~0.2 = a little, higher = springy).
+- **Response + bounce** (as in modern spring APIs, e.g. Motion's `spring`): `response` is roughly how long the spring takes to reach its target; `bounce` is how much it overshoots (0 = no overshoot, ~0.2 = a little, higher = springy).
 - **Mass / tension / friction** (older react-spring / Framer style): physical constants. Harder to reason about; prefer response+bounce when the API offers it.
 
-Apple's "Designing Fluid Interfaces" (WWDC 2018) gives the discipline: **specify damping and response, start at damping = 1 (critically damped, no bounce), and add bounce only when the gesture carried momentum.** A button tap has no momentum — it should not bounce. A card flicked off-screen does — a little overshoot on the neighbor settling into its place feels right.
+The discipline: **specify damping and response, start at damping = 1 (critically damped, no bounce), and add bounce only when the gesture carried momentum.** A button tap has no momentum — it should not bounce. A card flicked off-screen does — a little overshoot on the neighbor settling into its place feels right.
 
 ```jsx
 /* Functional UI — toggles, icon swaps, anything precise. NO bounce. */
 transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
 
-/* Apple-style physical — sheets, playful affordances, momentum-carrying gestures. */
+/* Physical — sheets, playful affordances, momentum-carrying gestures. */
 transition={{ type: 'spring', duration: 0.5, bounce: 0.2 }}
 ```
 
@@ -173,14 +173,14 @@ For reduced motion, drop the spring to an opacity fade or instant set — never 
 
 ## Interruptibility
 
-This is the **single most important property of how motion feels** — more than duration or easing. Apple's fluid-interface principle: motion must be **responsive, interruptible, and redirectable.** Real interfaces are interrupted constantly — a user opens a menu and immediately closes it, hovers and un-hovers, starts a drag and reverses. If the animation can't be caught mid-flight and sent somewhere new, the UI feels like it's arguing with the user.
+This is the **single most important property of how motion feels** — more than duration or easing. The fluid-interface principle: motion must be **responsive, interruptible, and redirectable.** Real interfaces are interrupted constantly — a user opens a menu and immediately closes it, hovers and un-hovers, starts a drag and reverses. If the animation can't be caught mid-flight and sent somewhere new, the UI feels like it's arguing with the user.
 
 The mechanism is a hard technical fork in CSS:
 
 - **CSS transitions retarget mid-flight.** Change the target value while a transition is running and it smoothly redirects from the *current* interpolated position to the new target. No snap.
 - **CSS keyframe animations snap or restart.** Re-trigger a `@keyframes` animation mid-play and it jumps back to frame 0 (or you fight `animation-fill-mode` and `animation-play-state` and still lose).
 
-This is why Emil's Sonner toast library is built on transitions, not keyframes — specifically so toasts can be **"interrupted and retargeted mid-flight"** when a new toast pushes the stack while one is still animating.
+This is why robust toast libraries are built on transitions, not keyframes — specifically so toasts can be **interrupted and retargeted mid-flight** when a new toast pushes the stack while one is still animating.
 
 ### The decision table
 
@@ -568,4 +568,4 @@ Where support is missing, the `grid-template-rows: 0fr → 1fr` trick remains th
 
 ---
 
-*Cross-references: [SKILL.md](SKILL.md) (the contract and headline numbers) · [accessibility.md](accessibility.md) (full `prefers-reduced-motion` policy, vestibular safety) · [performance.md](performance.md) (compositor-only animation, the tool ladder, 60fps/RAIL) · [interaction-states.md](interaction-states.md) (hover/active/focus-visible triad, feedback). Provenance for the numbers above lives in `sources.md`.*
+*Cross-references: [SKILL.md](SKILL.md) (the contract and headline numbers) · [accessibility.md](accessibility.md) (full `prefers-reduced-motion` policy, vestibular safety) · [performance.md](performance.md) (compositor-only animation, the tool ladder, 60fps/RAIL) · [interaction-states.md](interaction-states.md) (hover/active/focus-visible triad, feedback).*

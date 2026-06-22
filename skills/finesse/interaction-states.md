@@ -49,7 +49,7 @@ The element-level states (default/hover/active/focus/disabled/loading) are the p
 
 Hover is an enhancement, not a foundation. Two rules.
 
-**1. Gate it behind `@media (hover: hover) and (pointer: fine)`.** On touch devices, a tap registers as `:hover` and the hover style *sticks* until you tap elsewhere — a card stays lit, a tooltip stays open, a color stays inverted. Gating the rule means touch devices never enter the hover branch at all. This is standard practice at Vercel Geist and in Rauno Freiberg's work.
+**1. Gate it behind `@media (hover: hover) and (pointer: fine)`.** On touch devices, a tap registers as `:hover` and the hover style *sticks* until you tap elsewhere — a card stays lit, a tooltip stays open, a color stays inverted. Gating the rule means touch devices never enter the hover branch at all. This is standard practice.
 
 ```css
 /* WRONG — sticks on touch after a tap */
@@ -130,7 +130,7 @@ deleteBtn.addEventListener("click", confirmAndDelete);
 
 **Never remove a focus indicator for aesthetics.** `outline: none` with no replacement is the single most common accessibility regression in polished-looking UIs — it makes the interface unusable by keyboard. If the default outline is ugly, *replace* it; don't delete it.
 
-Replace `outline` with a `:focus-visible` ring drawn via `box-shadow`. `box-shadow` follows `border-radius`, so the ring hugs rounded corners; `outline` (pre–`outline` radius support) draws a hard rectangle that clips through them. This is Rauno Freiberg's recipe.
+Replace `outline` with a `:focus-visible` ring drawn via `box-shadow`. `box-shadow` follows `border-radius`, so the ring hugs rounded corners; `outline` (pre–`outline` radius support) draws a hard rectangle that clips through them.
 
 ```css
 /* The recipe: kill the default outline, draw a rounded ring on keyboard focus only */
@@ -174,7 +174,7 @@ A disabled control must be unmistakably disabled and genuinely inert.
 .button[aria-disabled="true"] { pointer-events: auto; }
 ```
 
-**Disable submit buttons after submission.** The moment a form submits, disable its submit button until the request resolves. Otherwise an impatient double-click fires the request twice — duplicate orders, duplicate messages, duplicate charges. This is Rauno Freiberg's rule and it is not optional for anything that writes to a server. Re-enable on completion (or navigate away on success).
+**Disable submit buttons after submission.** The moment a form submits, disable its submit button until the request resolves. Otherwise an impatient double-click fires the request twice — duplicate orders, duplicate messages, duplicate charges. This is not optional for anything that writes to a server. Re-enable on completion (or navigate away on success).
 
 ```js
 form.addEventListener("submit", async (e) => {
@@ -196,7 +196,7 @@ Pair this with a loading state on the button (see below) so the disabled period 
 
 **Prefer skeletons over spinners for content.** A skeleton — gray placeholder blocks shaped like the incoming content — previews the layout, communicates *what* is loading, and eliminates the layout shift that happens when a spinner is replaced by content of unknown size. A spinner says "something is happening somewhere"; a skeleton says "this specific content is arriving here." Use a spinner only for indeterminate, shapeless waits (a button's own in-flight state, a full-page boot) where there's no layout to preview.
 
-**Two anti-flicker rules (Vercel Geist).** A naive loader that toggles on the instant a request starts and off the instant it ends produces two distinct uglinesses:
+**Two anti-flicker rules.** A naive loader that toggles on the instant a request starts and off the instant it ends produces two distinct uglinesses:
 
 1. **Show-delay ~150–300ms** — don't show the loader at all until the request has been pending for this long. Most requests resolve faster than the eye registers; flashing a skeleton for 80ms is worse than showing nothing. If the data arrives before the delay elapses, the user never sees a loader — the content just appears.
 2. **Minimum visible time ~300–500ms** — *once* the loader is shown, keep it up for at least this long even if the data arrives 50ms later. A loader that flashes on and vanishes reads as a glitch. Committing to a minimum makes the wait feel intentional and calm.
@@ -333,7 +333,7 @@ Errors are a feedback channel; treat them as part of the design, not an aftertho
 
 ## Optimistic UI
 
-**This is the single biggest perceived-speed lever you have** — bigger than any animation. Render the expected result *immediately* on interaction, assuming success; then reconcile against the server's actual response, rolling back with feedback only if it failed. The interface responds at the speed of thought instead of the speed of the network. Linear's core tenet: UI responsiveness must never depend on network latency. Rauno Freiberg states it directly — "optimistically update locally and roll back on server error." See also Simon Hearne's optimistic-UI patterns and [performance.md](performance.md).
+**This is the single biggest perceived-speed lever you have** — bigger than any animation. Render the expected result *immediately* on interaction, assuming success; then reconcile against the server's actual response, rolling back with feedback only if it failed. The interface responds at the speed of thought instead of the speed of the network. A core tenet: UI responsiveness must never depend on network latency — "optimistically update locally and roll back on server error." See also [performance.md](performance.md).
 
 Use it for high-confidence, low-stakes, reversible writes: toggling a like, checking a box, adding to a list, renaming, reordering, marking read. Do **not** use it where a wrong guess is costly or confusing: payments, irreversible deletes, anything where showing a fake success then yanking it back would mislead.
 
@@ -360,7 +360,7 @@ Rollback needs feedback or it's a silent lie: if the like quietly reverts with n
 
 ## Trigger-local feedback
 
-Show the result of an action *at the action*, not across the screen. After a successful "copy," swap the copy icon to a checkmark in place for a beat, then swap back — don't fire a toast in the opposite corner that costs an eye-movement to read and confirms something the user already knows where to look for. This is Rauno Freiberg's principle: feedback belongs relative to its trigger. Toasts are for *out-of-context* events (a background job finished, a message arrived) — not for confirming the thing the user is currently looking at.
+Show the result of an action *at the action*, not across the screen. After a successful "copy," swap the copy icon to a checkmark in place for a beat, then swap back — don't fire a toast in the opposite corner that costs an eye-movement to read and confirms something the user already knows where to look for. The principle: feedback belongs relative to its trigger. Toasts are for *out-of-context* events (a background job finished, a message arrived) — not for confirming the thing the user is currently looking at.
 
 ```js
 async function copy(text, button) {
@@ -386,7 +386,7 @@ async function copy(text, button) {
 
 ## Menus & overlays
 
-**Open dropdowns on `mousedown`, not `click`.** `click` only fires after the button is *released*; `mousedown` fires the instant the button goes down. Opening on `mousedown` makes the menu feel like it was already there — it appears under the cursor before the user finishes the press. This is Rauno Freiberg's technique and it's a large, free perceived-speed win for menus you open constantly.
+**Open dropdowns on `mousedown`, not `click`.** `click` only fires after the button is *released*; `mousedown` fires the instant the button goes down. Opening on `mousedown` makes the menu feel like it was already there — it appears under the cursor before the user finishes the press. It's a large, free perceived-speed win for menus you open constantly.
 
 ```js
 trigger.addEventListener("mousedown", (e) => {
@@ -398,7 +398,7 @@ trigger.addEventListener("mousedown", (e) => {
 
 (Keep keyboard parity: `Enter`/`Space`/`ArrowDown` on the trigger must also open it. `mousedown` is a pointer optimization, not a replacement for keyboard handling — see [accessibility.md](accessibility.md).)
 
-**Submenus need a "prediction cone" / exit-delay so a diagonal pointer path doesn't dismiss them.** When the pointer moves from a parent item toward an open submenu, its path cuts diagonally across *sibling* items. Naively, hovering a sibling closes the submenu and the user can never reach it. The fix (Josh Comeau): put a `transition-delay` on the *exit* (closing) so the submenu lingers ~200–300ms after the pointer leaves the parent, giving the diagonal path time to land — but **0ms delay on enter** so opening stays instant. (The robust version actually tracks the triangle between cursor and submenu corners; the asymmetric delay is the simple, effective approximation.)
+**Submenus need a "prediction cone" / exit-delay so a diagonal pointer path doesn't dismiss them.** When the pointer moves from a parent item toward an open submenu, its path cuts diagonally across *sibling* items. Naively, hovering a sibling closes the submenu and the user can never reach it. The fix: put a `transition-delay` on the *exit* (closing) so the submenu lingers ~200–300ms after the pointer leaves the parent, giving the diagonal path time to land — but **0ms delay on enter** so opening stays instant. (The robust version actually tracks the triangle between cursor and submenu corners; the asymmetric delay is the simple, effective approximation.)
 
 ```css
 .submenu {

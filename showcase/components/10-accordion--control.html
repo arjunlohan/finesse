@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FAQ</title>
+<style>
+  :root {
+    /* Motion */
+    --dur-fast:  140ms;
+    --dur-base:  240ms;
+    --dur-slow:  360ms;
+    --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);     /* expressive decelerate */
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* gentle overshoot for chevron */
+
+    /* Surface — warm near-white page, cool tinted card */
+    --bg:        hsl(40 12% 98%);
+    --card:      hsl(0 0% 100%);
+    --card-edge: hsl(220 24% 90%);
+
+    /* Text — never pure black */
+    --ink:       hsl(222 24% 14%);
+    --ink-soft:  hsl(220 12% 40%);
+    --ink-faint: hsl(220 10% 56%);
+
+    /* Lines */
+    --line:      hsl(220 18% 93%);
+    --line-soft: hsl(220 18% 95.5%);
+
+    /* Accent */
+    --accent:      hsl(243 66% 58%);
+    --accent-soft: hsl(243 70% 60%);
+    --accent-wash: hsl(243 64% 58% / 0.07);
+
+    --radius-card: 22px;
+    --radius-row:  15px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 40px 28px;
+    background:
+      radial-gradient(125% 90% at 50% -8%, hsl(243 48% 97%) 0%, transparent 56%),
+      var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* ============================================================
+     Shell
+     ============================================================ */
+  .faq {
+    width: 100%;
+    max-width: 416px;
+  }
+
+  .faq__head {
+    margin: 0 4px 18px;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  .eyebrow .dot {
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-wash);
+  }
+  .faq__title {
+    font-size: 23px;
+    font-weight: 640;
+    letter-spacing: -0.025em;
+    line-height: 1.18;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  /* ============================================================
+     List card
+     ============================================================ */
+  .list {
+    background: var(--card);
+    border-radius: var(--radius-card);
+    padding: 6px;
+    box-shadow:
+      0 0 0 1px var(--card-edge),
+      0 1px 2px hsl(220 30% 18% / 0.04),
+      0 5px 12px -4px hsl(220 30% 18% / 0.06),
+      0 20px 36px -16px hsl(220 30% 18% / 0.10);
+  }
+
+  .item {
+    position: relative;
+    border-radius: var(--radius-row);
+  }
+  /* hairline divider between rows — fades when either neighbour opens */
+  .item + .item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: var(--line);
+    transform: scaleY(1);
+    transition: opacity var(--dur-base) var(--ease-soft);
+  }
+  .item.is-open::before,
+  .item.is-open + .item::before { opacity: 0; }
+
+  /* soft tinted backplate behind an open row */
+  .item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-row);
+    background: var(--accent-wash);
+    opacity: 0;
+    transform: scale(0.985);
+    transition:
+      opacity var(--dur-base) var(--ease-soft),
+      transform var(--dur-base) var(--ease-out);
+    pointer-events: none;
+  }
+  .item.is-open::after { opacity: 1; transform: scale(1); }
+
+  /* ============================================================
+     Trigger (header)
+     ============================================================ */
+  .trigger {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 17px 16px 17px 18px;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    border-radius: var(--radius-row);
+    font: inherit;
+    text-align: left;
+    color: var(--ink);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color var(--dur-fast) var(--ease-soft);
+  }
+  .trigger__q {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 15.5px;
+    font-weight: 560;
+    letter-spacing: -0.012em;
+    line-height: 1.4;
+    color: var(--ink);
+    transition: color var(--dur-fast) var(--ease-soft);
+  }
+
+  @media (hover: hover) {
+    .item:not(.is-open) .trigger:hover .trigger__q { color: hsl(243 50% 40%); }
+    .item:not(.is-open) .trigger:hover ~ .chev,
+    .item:not(.is-open) .trigger:hover .chev { color: var(--accent); }
+  }
+
+  .item.is-open .trigger__q { color: hsl(243 48% 34%); }
+
+  .trigger:focus { outline: none; }
+  .trigger:focus-visible {
+    box-shadow:
+      0 0 0 2px var(--card),
+      0 0 0 4px var(--accent-soft);
+  }
+
+  /* press give */
+  .trigger:active .chev-wrap { transform: scale(0.9); }
+
+  /* ============================================================
+     Chevron
+     ============================================================ */
+  .chev-wrap {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    color: var(--ink-faint);
+    background: transparent;
+    transition:
+      background var(--dur-base) var(--ease-soft),
+      color var(--dur-base) var(--ease-soft),
+      transform var(--dur-fast) var(--ease-soft);
+  }
+  .item.is-open .chev-wrap {
+    color: var(--accent);
+    background: hsl(243 64% 58% / 0.1);
+  }
+  .chev {
+    width: 16px;
+    height: 16px;
+    display: block;
+    transition: transform var(--dur-base) var(--ease-spring);
+  }
+  .item.is-open .chev { transform: rotate(180deg); }
+  .chev svg { display: block; width: 100%; height: 100%; }
+
+  /* ============================================================
+     Answer panel — grid 0fr→1fr trick: interruptible, no JS measuring
+     ============================================================ */
+  .panel {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition:
+      grid-template-rows var(--dur-base) var(--ease-out);
+  }
+  .item.is-open .panel { grid-template-rows: 1fr; }
+
+  .panel__clip {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .panel__inner {
+    padding: 0 18px 18px 18px;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+      opacity var(--dur-fast) var(--ease-soft),
+      transform var(--dur-base) var(--ease-out);
+  }
+  .item.is-open .panel__inner {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity var(--dur-base) var(--ease-soft) 60ms,
+      transform var(--dur-base) var(--ease-out) 40ms;
+  }
+
+  .answer {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 42ch;
+    text-wrap: pretty;
+  }
+  /* indent the answer to align under the question text, not the row edge */
+  .answer + .answer { margin-top: 10px; }
+
+  .answer a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 560;
+    box-shadow: inset 0 -1px 0 hsl(243 64% 58% / 0.3);
+    transition: box-shadow var(--dur-fast) var(--ease-soft);
+  }
+  .answer a:hover { box-shadow: inset 0 -1px 0 hsl(243 64% 58% / 0.7); }
+
+  /* ============================================================
+     Footer prompt
+     ============================================================ */
+  .foot {
+    margin: 18px 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--ink-faint);
+  }
+  .foot a {
+    color: var(--ink-soft);
+    font-weight: 560;
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    transition: color var(--dur-fast) var(--ease-soft), border-color var(--dur-fast) var(--ease-soft);
+  }
+  .foot a:hover { color: var(--accent); border-color: var(--accent-soft); }
+
+  /* ============================================================
+     Reduced motion
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    .panel { transition: grid-template-rows var(--dur-fast) linear; }
+    .chev { transition: transform var(--dur-fast) linear; }
+    .panel__inner,
+    .item.is-open .panel__inner { transition: opacity var(--dur-fast) linear; transform: none; }
+    .item::after { transition: opacity var(--dur-fast) linear; transform: none; }
+    .item.is-open::after { transform: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="faq">
+    <header class="faq__head">
+      <p class="eyebrow"><span class="dot"></span> Support</p>
+      <h1 class="faq__title">Frequently asked questions</h1>
+    </header>
+
+    <div class="list" id="faq-list">
+      <!-- 1 -->
+      <section class="item is-open">
+        <h3 style="margin:0;">
+          <button class="trigger" type="button" id="trig-1" aria-expanded="true" aria-controls="panel-1">
+            <span class="trigger__q">How does the free trial work?</span>
+            <span class="chev-wrap" aria-hidden="true">
+              <span class="chev">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </span>
+          </button>
+        </h3>
+        <div class="panel" id="panel-1" role="region" aria-labelledby="trig-1">
+          <div class="panel__clip">
+            <div class="panel__inner">
+              <p class="answer">Every plan starts with a full 14-day trial — no card required. You get unrestricted access to every feature, and we send a friendly reminder three days before it ends.</p>
+              <p class="answer">If you decide it's not for you, simply let the trial lapse. Nothing is charged automatically.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section class="item">
+        <h3 style="margin:0;">
+          <button class="trigger" type="button" id="trig-2" aria-expanded="false" aria-controls="panel-2">
+            <span class="trigger__q">Can I change plans later?</span>
+            <span class="chev-wrap" aria-hidden="true">
+              <span class="chev">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </span>
+          </button>
+        </h3>
+        <div class="panel" id="panel-2" role="region" aria-labelledby="trig-2">
+          <div class="panel__clip">
+            <div class="panel__inner">
+              <p class="answer">Absolutely. Upgrade, downgrade, or switch billing cycles anytime from your dashboard. Changes take effect immediately and we prorate the difference to the cent — you only ever pay for what you use.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section class="item">
+        <h3 style="margin:0;">
+          <button class="trigger" type="button" id="trig-3" aria-expanded="false" aria-controls="panel-3">
+            <span class="trigger__q">Is my data secure?</span>
+            <span class="chev-wrap" aria-hidden="true">
+              <span class="chev">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </span>
+          </button>
+        </h3>
+        <div class="panel" id="panel-3" role="region" aria-labelledby="trig-3">
+          <div class="panel__clip">
+            <div class="panel__inner">
+              <p class="answer">Security is foundational, not an afterthought. All data is encrypted in transit and at rest with AES-256, we're SOC 2 Type II certified, and we run independent penetration tests every quarter.</p>
+              <p class="answer">You stay in control — export or permanently delete your data whenever you like.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section class="item">
+        <h3 style="margin:0;">
+          <button class="trigger" type="button" id="trig-4" aria-expanded="false" aria-controls="panel-4">
+            <span class="trigger__q">How do I cancel my subscription?</span>
+            <span class="chev-wrap" aria-hidden="true">
+              <span class="chev">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </span>
+          </button>
+        </h3>
+        <div class="panel" id="panel-4" role="region" aria-labelledby="trig-4">
+          <div class="panel__clip">
+            <div class="panel__inner">
+              <p class="answer">One click, no phone calls, no retention maze. Head to <a href="#" onclick="return false;">Billing &rarr; Cancel plan</a> and you're done. You keep full access until the end of your current period.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="foot">
+      Still have questions?&nbsp;<a href="#" onclick="return false;">Talk to our team</a>
+    </p>
+  </main>
+
+<script>
+(function () {
+  "use strict";
+
+  var list = document.getElementById("faq-list");
+  var triggers = Array.prototype.slice.call(list.querySelectorAll(".trigger"));
+
+  function setOpen(item, open) {
+    var trigger = item.querySelector(".trigger");
+    item.classList.toggle("is-open", open);
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  triggers.forEach(function (trigger) {
+    var item = trigger.closest(".item");
+
+    trigger.addEventListener("click", function () {
+      var willOpen = !item.classList.contains("is-open");
+      setOpen(item, willOpen);
+    });
+  });
+
+  // Keyboard niceties: arrow / home / end navigation across headers.
+  list.addEventListener("keydown", function (e) {
+    var idx = triggers.indexOf(document.activeElement);
+    if (idx === -1) return;
+
+    var next = null;
+    switch (e.key) {
+      case "ArrowDown": next = (idx + 1) % triggers.length; break;
+      case "ArrowUp":   next = (idx - 1 + triggers.length) % triggers.length; break;
+      case "Home":      next = 0; break;
+      case "End":       next = triggers.length - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    triggers[next].focus();
+  });
+})();
+</script>
+</body>
+</html>

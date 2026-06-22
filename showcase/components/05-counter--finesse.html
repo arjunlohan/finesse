@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Active now</title>
+<style>
+  :root {
+    /* ---- Motion tokens (the shared contract) ---- */
+    --duration-fast:   150ms;   /* micro: hover, press, color, tint */
+    --duration-base:   200ms;   /* standard reveals, single-digit roll */
+    --duration-slow:   300ms;   /* larger surface / multi-digit cascade settle */
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* small in-place change */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* enter / decelerate — the digit roll */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* exit / accelerate */
+
+    /* ---- Surface & color (saturated neutrals, near-black not #000) ---- */
+    --canvas:        hsl(40 12% 98%);
+    --card-bg:       hsl(40 20% 99.5%);
+    --card-border:   hsl(40 8% 89%);
+
+    --ink-primary:   hsl(222 22% 13%);   /* near-black, the number */
+    --ink-secondary: hsl(220 10% 40%);
+    --ink-tertiary:  hsl(220 8% 56%);
+
+    /* The live accent — a calm, confident green for "active / online" */
+    --live:          hsl(152 58% 40%);
+    --live-strong:   hsl(152 60% 34%);
+    --live-soft:     hsl(152 46% 92%);
+    --live-ring:     hsl(152 60% 44%);
+
+    --accent:        hsl(244 62% 58%);   /* button + focus ring */
+    --accent-hover:  hsl(244 64% 54%);
+    --accent-press:  hsl(244 66% 49%);
+    --accent-ink:    hsl(0 0% 100%);
+
+    --delta-ink:     hsl(152 56% 33%);   /* the "+N" flourish */
+
+    /* Concentric radii: card padding is 24px, inner figure plate is 16,
+       so the figure's outer would be 16; card outer = inner(16) + pad(8 here) */
+    --r-card:  24px;
+    --r-plate: 16px;   /* 24 - 8 = 16 against the card's inner edge run */
+    --r-btn:   13px;
+    --r-pip:   999px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    display: grid;
+    place-items: center;
+    padding: 40px 28px;
+    background: var(--canvas);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  /* ---------------- Card ---------------- */
+  .card {
+    position: relative;
+    padding: 22px 24px 24px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-card);
+    /* Layered, hue-tinted shadows — light from above, never pure black */
+    box-shadow:
+      0 1px 1px hsl(40 12% 45% / 0.04),
+      0 2px 6px hsl(40 12% 38% / 0.05),
+      0 12px 28px hsl(40 12% 36% / 0.06),
+      inset 0 1px 0 hsl(0 0% 100% / 0.8);
+  }
+
+  /* ---- Header: label + live pip ---- */
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .label-group {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+
+  /* The pulsing presence pip — its meaning is also carried by the text label,
+     never by the animation alone. */
+  .pip {
+    position: relative;
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    border-radius: var(--r-pip);
+    background: var(--live);
+    box-shadow: 0 0 0 0.5px hsl(152 60% 30% / 0.25) inset;
+  }
+  .pip::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--live-ring);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .pip::after { animation: pip-pulse 2.6s var(--ease-out) infinite; }
+  }
+  @keyframes pip-pulse {
+    0%        { transform: scale(1);   opacity: 0.55; }
+    70%, 100% { transform: scale(2.6); opacity: 0; }
+  }
+
+  .label {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* small live badge on the right of the header */
+  .live-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--live-strong);
+    background: var(--live-soft);
+    border: 1px solid hsl(152 40% 80%);
+    border-radius: var(--r-pip);
+  }
+  .live-badge svg { width: 11px; height: 11px; display: block; }
+
+  /* ---------------- The number ---------------- */
+  .figure {
+    display: flex;
+    align-items: baseline;     /* baseline-align the big figure with the +delta */
+    gap: 12px;
+    margin-top: 18px;
+    min-height: 64px;
+  }
+
+  /* The odometer: a row of digit columns. tabular-nums guarantees each glyph
+     cell is identical width so the number never reflows as it ticks. */
+  .odometer {
+    display: inline-flex;
+    align-items: stretch;
+    font-size: 56px;
+    line-height: 1;
+    font-weight: 680;
+    letter-spacing: -0.025em;   /* tighten display type */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    color: var(--ink-primary);
+    /* clip the rolling strips to a single glyph-tall window */
+    height: 0.92em;
+    overflow: hidden;
+    /* faint top/bottom mask so rolling digits arrive and leave through a soft
+       edge; the band is narrow so a resting digit stays crisp. */
+    -webkit-mask-image: linear-gradient(
+      to bottom, transparent 0, #000 7%, #000 93%, transparent 100%);
+            mask-image: linear-gradient(
+      to bottom, transparent 0, #000 7%, #000 93%, transparent 100%);
+  }
+
+  /* A non-rolling glyph (thousands separator). It must sit on the same
+     baseline as the rolling digits, which are vertically centred in the
+     0.92em window — so centre the comma's line box too. */
+  .sep {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 0.92em;
+    color: var(--ink-tertiary);
+    width: 0.26em;
+  }
+
+  /* One digit column. It self-sizes to the tabular advance of a real figure
+     via an invisible spacer glyph (.gauge) — no magic ch fraction to drift. */
+  .digit {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+    overflow: hidden;
+  }
+  /* occupies the box so the column is exactly one tabular digit wide */
+  .digit .gauge {
+    visibility: hidden;
+    display: block;
+    height: 0.92em;
+  }
+
+  /* The vertical strip carrying 0..9 (and a wrap glyph). Translated by JS;
+     the transition is what makes it interruptible & retargetable mid-roll. */
+  .reel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    will-change: transform;
+    transform: translateY(0);
+  }
+  .reel .glyph {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 0.92em;            /* must equal the .odometer window height */
+    line-height: 1;
+  }
+
+  /* Animated state lives on .reel.is-rolling so the resting reset is instant */
+  .reel.is-rolling {
+    transition: transform var(--reel-dur, var(--duration-base)) var(--ease-out);
+  }
+
+  /* The +delta flourish that floats in on each increment */
+  .delta {
+    display: inline-flex;
+    align-items: baseline;
+    font-size: 19px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    color: var(--delta-ink);
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .delta .arrow { font-size: 14px; margin-right: 1px; transform: translateY(-1px); }
+  @media (prefers-reduced-motion: no-preference) {
+    .delta.is-shown { animation: delta-rise 1100ms var(--ease-out) forwards; }
+  }
+  @keyframes delta-rise {
+    0%   { opacity: 0; transform: translateY(8px); }
+    18%  { opacity: 1; transform: translateY(0); }
+    72%  { opacity: 1; transform: translateY(-2px); }
+    100% { opacity: 0; transform: translateY(-9px); }
+  }
+  /* reduced-motion: show the delta as a quiet, still tag that fades */
+  @media (prefers-reduced-motion: reduce) {
+    .delta.is-shown { animation: delta-fade 900ms linear forwards; transform: none; }
+  }
+  @keyframes delta-fade {
+    0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; }
+  }
+
+  /* ---------------- Sub / footer ---------------- */
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-tertiary);
+  }
+  .meta b {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-secondary);
+  }
+  .meta .dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+
+  /* ---------------- Button ---------------- */
+  .actions { margin-top: 22px; }
+
+  .bump {
+    position: relative;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    /* icon side ~2px less padding than the text side (optical) */
+    padding: 12px 16px 12px 14px;
+    min-height: 46px;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    line-height: 1;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: 1px solid hsl(244 62% 50%);
+    border-radius: var(--r-btn);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow:
+      0 1px 2px hsl(244 50% 30% / 0.18),
+      0 2px 8px hsl(244 50% 35% / 0.16),
+      inset 0 1px 0 hsl(0 0% 100% / 0.22);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .bump:hover {
+      background: var(--accent-hover);
+      box-shadow:
+        0 1px 2px hsl(244 50% 30% / 0.2),
+        0 4px 14px hsl(244 50% 35% / 0.22),
+        inset 0 1px 0 hsl(0 0% 100% / 0.24);
+    }
+  }
+
+  .bump:active {
+    transform: scale(0.97);
+    background: var(--accent-press);
+    box-shadow:
+      0 1px 1px hsl(244 50% 30% / 0.18),
+      inset 0 1px 1px hsl(244 60% 25% / 0.18);
+  }
+
+  .bump:focus-visible {
+    outline: none;
+    /* 2px gap in the card bg, then the accent ring — hugs the radius */
+    box-shadow:
+      0 0 0 2px var(--card-bg),
+      0 0 0 4px var(--accent),
+      0 2px 8px hsl(244 50% 35% / 0.16);
+  }
+
+  .bump .b-icon { width: 17px; height: 17px; display: block; flex: 0 0 auto; }
+  /* the spark gives a tiny kick on each press */
+  @media (prefers-reduced-motion: no-preference) {
+    .bump.kick .b-icon { animation: spark 360ms var(--ease-out); }
+  }
+  @keyframes spark {
+    0%   { transform: scale(1) rotate(0); }
+    40%  { transform: scale(1.22) rotate(-9deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ---------------- Reduced motion ---------------- */
+  @media (prefers-reduced-motion: reduce) {
+    /* Substitute, don't delete: the digits still change (carry the meaning),
+       but they cross-fade in place instead of rolling. JS reads this flag. */
+    .reel.is-rolling { transition: none; }
+    .bump { transition:
+        background-color var(--duration-fast) linear,
+        border-color var(--duration-fast) linear; }
+    .bump:active { transform: none; background: var(--accent-press); }
+  }
+
+  /* ---------------- Forced colors ---------------- */
+  @media (forced-colors: active) {
+    .card, .bump, .live-badge { border-color: CanvasText; }
+    .bump:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+    .pip { background: CanvasText; }
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <section class="card" aria-labelledby="statLabel">
+      <div class="head">
+        <div class="label-group">
+          <span class="pip" aria-hidden="true"></span>
+          <h2 class="label" id="statLabel">Active now</h2>
+        </div>
+        <span class="live-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5.5 12a6.5 6.5 0 0 1 13 0" opacity="0.45" />
+            <path d="M2.5 12a9.5 9.5 0 0 1 19 0" opacity="0.25" />
+            <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" />
+          </svg>
+          Live
+        </span>
+      </div>
+
+      <div class="figure">
+        <!-- the rolling number; aria-live announces the true value to AT -->
+        <div class="odometer" id="odometer" aria-hidden="true"></div>
+        <span class="delta" id="delta" aria-hidden="true"></span>
+      </div>
+
+      <p class="meta">
+        <span>Peak today <b id="peak">0</b></span>
+        <span class="dot" aria-hidden="true"></span>
+        <span id="trend">holding steady</span>
+      </p>
+
+      <div class="actions">
+        <button class="bump" id="bumpBtn" type="button">
+          <svg class="b-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M13 3 4.5 13.2a.7.7 0 0 0 .54 1.15H11l-1 6.65a.4.4 0 0 0 .72.3L19.5 11.1a.7.7 0 0 0-.54-1.15H13l1-6.6a.4.4 0 0 0-.72-.31Z" />
+          </svg>
+          Simulate burst
+        </button>
+      </div>
+
+      <!-- screen-reader channel: the visual odometer is silent to AT otherwise -->
+      <div class="visually-hidden" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      var odometerEl = document.getElementById("odometer");
+      var deltaEl    = document.getElementById("delta");
+      var peakEl     = document.getElementById("peak");
+      var trendEl    = document.getElementById("trend");
+      var statusEl   = document.getElementById("status");
+      var btn        = document.getElementById("bumpBtn");
+
+      // ---- Model ----
+      var value = 1247;          // starting "active now"
+      var peak  = value;
+      var GLYPH_H_EM = 0.92;     // must equal .odometer height & .glyph height
+
+      // Build a digit column: a reel of 11 glyphs (0..9 then a wrap 0) so a
+      // roll from 9 -> 0 can travel *down* one cell visually (forward motion).
+      function makeDigitColumn() {
+        var digit = document.createElement("span");
+        digit.className = "digit";
+        // invisible spacer that gives the column its tabular width
+        var gauge = document.createElement("span");
+        gauge.className = "gauge";
+        gauge.textContent = "0";
+        gauge.setAttribute("aria-hidden", "true");
+        digit.appendChild(gauge);
+        var reel = document.createElement("span");
+        reel.className = "reel";
+        for (var n = 0; n <= 10; n++) {
+          var g = document.createElement("span");
+          g.className = "glyph";
+          g.textContent = String(n % 10);
+          reel.appendChild(g);
+        }
+        digit.appendChild(reel);
+        digit._reel = reel;
+        digit._shown = 0;        // which glyph index (0..9) is currently centred
+        return digit;
+      }
+
+      function makeSeparator() {
+        var s = document.createElement("span");
+        s.className = "sep";
+        s.textContent = ",";
+        s.setAttribute("aria-hidden", "true");
+        return s;
+      }
+
+      // Lay out exactly the columns needed for `digitsStr`, reusing existing
+      // ones so the reels keep their position (and can roll from current).
+      var columns = [];   // array of .digit elements, most-significant first
+      function ensureLayout(digitsStr) {
+        var need = digitsStr.length;
+        // (Re)build the DOM: separators are derived, so it's cleanest to rebuild
+        // the track while preserving reel state for the right-aligned columns.
+        // We keep trailing columns stable (they change most), so align from the
+        // RIGHT: index columns from the end.
+        if (columns.length !== need) {
+          // grow/shrink the columns array, preserving the rightmost columns
+          var fresh = [];
+          for (var i = 0; i < need; i++) {
+            var fromRight = need - 1 - i;
+            var existing = columns[columns.length - 1 - fromRight];
+            fresh[i] = existing || makeDigitColumn();
+          }
+          columns = fresh;
+
+          // rebuild track with thousands separators
+          odometerEl.textContent = "";
+          for (var j = 0; j < need; j++) {
+            var posFromRight = need - 1 - j;
+            if (j > 0 && posFromRight % 3 === 2) {
+              odometerEl.appendChild(makeSeparator());
+            }
+            odometerEl.appendChild(columns[j]);
+          }
+        }
+        return columns;
+      }
+
+      // Position a reel to a target digit. If `animate`, roll there with a
+      // duration that scales with how many places this column travelled
+      // (carry digits travel further → take a touch longer, capped).
+      function setColumn(col, targetDigit, animate, rollSteps) {
+        var reel = col._reel;
+        var prev = col._shown;
+        // bump a per-column token so a stale wrap-snap from an earlier roll
+        // can't clobber a roll that started after it (interruptibility).
+        col._roll = (col._roll || 0) + 1;
+        var myRoll = col._roll;
+
+        if (prev === targetDigit && animate) { return; }   // nothing to do
+
+        if (!animate || reduceMotion.matches) {
+          reel.classList.remove("is-rolling");
+          // if a wrap left us parked on the phantom glyph 10, normalise first
+          reel.style.transform = "translateY(" + (-targetDigit * GLYPH_H_EM) + "em)";
+          if (reduceMotion.matches && animate && prev !== targetDigit) {
+            // substitute: a quiet opacity blink so the change is still felt
+            reel.animate(
+              [{ opacity: 0.35 }, { opacity: 1 }],
+              { duration: 200, easing: "linear" }
+            );
+          }
+          col._shown = targetDigit;
+          return;
+        }
+
+        // Forward roll: counting up. If the digit decreased (a carry, e.g.
+        // 9 -> 0), continue *downward* through the wrap glyph (index 10) so
+        // motion direction stays "up-counting" visually, then snap to the real
+        // 0 with no transition once it lands.
+        var wrapped = targetDigit < prev;
+        var landing = wrapped ? 10 : targetDigit;
+
+        // Duration scales with travel distance & carry depth, within the token
+        // band (150–300ms). Deeper carries lean toward --duration-slow.
+        var depth = Math.min(rollSteps || 1, 4);
+        var dur = 190 + depth * 26;                 // 216..294ms
+        reel.style.setProperty("--reel-dur", dur + "ms");
+
+        // enable the transition and start from the current resting transform
+        reel.classList.add("is-rolling");
+        void reel.offsetWidth;                       // reflow so the change tweens
+        reel.style.transform = "translateY(" + (-landing * GLYPH_H_EM) + "em)";
+        col._shown = targetDigit;
+
+        if (wrapped) {
+          var onEnd = function (e) {
+            if (e.propertyName !== "transform") return;
+            reel.removeEventListener("transitionend", onEnd);
+            // a newer roll superseded this one — let it own the reel
+            if (col._roll !== myRoll) return;
+            // jump silently to the true digit (glyph 10 and 0 look identical)
+            reel.classList.remove("is-rolling");
+            reel.style.transform = "translateY(" + (-targetDigit * GLYPH_H_EM) + "em)";
+          };
+          reel.addEventListener("transitionend", onEnd);
+        }
+      }
+
+      var prevDigits = "";
+      function render(newValue, animate) {
+        var str = String(newValue);
+        var cols = ensureLayout(str);
+
+        // figure out per-column travel (for duration scaling & cascade delay)
+        var oldStr = prevDigits.padStart(str.length, "0");
+        var changedFrom = -1;          // left-most index that changed
+        for (var i = 0; i < str.length; i++) {
+          if (str[i] !== oldStr[i]) { changedFrom = i; break; }
+        }
+
+        for (var k = 0; k < str.length; k++) {
+          var d = parseInt(str[k], 10);
+          var col = cols[k];
+          var willAnimate = animate && k >= (changedFrom < 0 ? str.length : changedFrom);
+          if (!willAnimate) {
+            // no change in this (higher) column — set without animating
+            setColumn(col, d, false);
+            continue;
+          }
+          // cascade: lower-significance digits (rightmost) lead, carries follow
+          var placesFromRight = str.length - 1 - k;
+          var rollSteps = placesFromRight + 1;
+          var delay = animate && !reduceMotion.matches ? Math.min(placesFromRight, 4) * 22 : 0;
+          (function (c, dd, rs) {
+            if (delay === 0) { setColumn(c, dd, true, rs); }
+            else { setTimeout(function () { setColumn(c, dd, true, rs); }, delay); }
+          })(col, d, rollSteps);
+        }
+
+        prevDigits = str;
+      }
+
+      // ---- Delta flourish ----
+      function showDelta(amount) {
+        deltaEl.textContent = "";
+        var arrow = document.createElement("span");
+        arrow.className = "arrow";
+        arrow.textContent = "↑";
+        deltaEl.appendChild(arrow);
+        deltaEl.appendChild(document.createTextNode("+" + amount));
+        // restart the one-shot animation cleanly even on rapid clicks
+        deltaEl.classList.remove("is-shown");
+        void deltaEl.offsetWidth;     // reflow to re-trigger keyframes
+        deltaEl.classList.add("is-shown");
+      }
+
+      // ---- Trend / peak supporting copy ----
+      function updateMeta(amount) {
+        if (value > peak) {
+          peak = value;
+          peakEl.textContent = peak.toLocaleString("en-US");
+        }
+        trendEl.textContent = amount >= 30 ? "spiking" : amount >= 12 ? "climbing" : "ticking up";
+      }
+
+      // ---- The action ----
+      var announceTimer = null;
+      function bump() {
+        // random increment, weighted toward small bumps with occasional bursts
+        var roll = Math.random();
+        var amount = roll > 0.86
+          ? 24 + Math.floor(Math.random() * 33)   // burst: 24..56
+          : 1 + Math.floor(Math.random() * 11);   // normal: 1..11
+
+        value += amount;
+
+        // Optimistic, trigger-local feedback: the number commits instantly,
+        // no waiting on anything. (No network here, but the pattern holds.)
+        render(value, true);
+        showDelta(amount);
+        updateMeta(amount);
+
+        // press flourish on the icon
+        btn.classList.remove("kick");
+        void btn.offsetWidth;
+        btn.classList.add("kick");
+
+        // Announce politely, debounced so rapid clicks don't spam the buffer.
+        clearTimeout(announceTimer);
+        announceTimer = setTimeout(function () {
+          statusEl.textContent = value.toLocaleString("en-US") + " active now";
+        }, 350);
+      }
+
+      btn.addEventListener("click", bump);
+
+      // ---- Initial paint (no animation) ----
+      peakEl.textContent = peak.toLocaleString("en-US");
+      render(value, false);
+
+      // If the OS motion preference flips at runtime, re-seat reels instantly
+      reduceMotion.addEventListener && reduceMotion.addEventListener("change", function () {
+        prevDigits = "";
+        render(value, false);
+      });
+
+      // ---- Ambient drift: the number "changes frequently and visibly" on its
+      // own, like a real presence counter, even without clicks. Small ±, paused
+      // when the tab is hidden so it never burns cycles offscreen. ----
+      var driftTimer = null;
+      function scheduleDrift() {
+        clearTimeout(driftTimer);
+        driftTimer = setTimeout(function tick() {
+          if (!document.hidden) {
+            var dir = Math.random();
+            var step = 1 + Math.floor(Math.random() * 4);
+            // bias gently upward so it trends like a live audience
+            value += dir > 0.42 ? step : -Math.min(step, value - 1);
+            if (value < 1) value = 1;
+            render(value, true);
+            if (value > peak) { peak = value; peakEl.textContent = peak.toLocaleString("en-US"); }
+          }
+          driftTimer = setTimeout(tick, 1600 + Math.random() * 1600);
+        }, 1800);
+      }
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) { clearTimeout(driftTimer); }
+        else { scheduleDrift(); }
+      });
+      scheduleDrift();
+    })();
+  </script>
+</body>
+</html>

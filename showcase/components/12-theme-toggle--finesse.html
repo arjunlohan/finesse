@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Appearance</title>
+<style>
+  :root {
+    /* MOTION TOKENS — one scale, referenced everywhere */
+    --duration-instant: 0ms;
+    --duration-fast:    150ms;
+    --duration-base:    200ms;
+    --duration-slow:    300ms;
+    --duration-slower:  450ms;
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1);
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15);
+    --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-throw:    cubic-bezier(0.34, 1.32, 0.6, 1);
+
+    /* THEME-AWARE TOKENS — defaults are LIGHT. The dark block re-binds
+       the same names. Color transitions are gated behind .theming so the
+       whole panel crossfades as one move instead of a per-property smear. */
+    --stage-from: hsl(38 30% 96%);
+    --stage-to:   hsl(34 26% 92%);
+
+    --card:           hsl(40 40% 99.5%);
+    --card-2:         hsl(40 24% 97.2%);
+    --card-border:    hsl(38 18% 89%);
+    --hairline:       hsl(38 14% 90%);
+
+    --text-primary:   hsl(35 12% 13%);
+    --text-secondary: hsl(35 8% 38%);
+    --text-tertiary:  hsl(35 7% 54%);
+
+    --accent:         hsl(255 72% 58%);
+    --accent-hover:   hsl(255 70% 53%);
+    --accent-press:   hsl(255 70% 49%);
+    --accent-ink:     hsl(0 0% 100%);
+    --accent-soft:    hsl(255 70% 96%);
+    --focus-ring:     hsl(255 80% 62%);
+
+    --track-off:      hsl(38 8% 82%);
+    --track-off-hov:  hsl(38 8% 78%);
+    --track-on:       hsl(150 56% 41%);
+    --track-on-hov:   hsl(150 58% 37%);
+    --knob:           hsl(0 0% 100%);
+
+    --shadow-card:
+      0 0 0 1px hsl(38 16% 50% / 0.05),
+      0 1px 2px hsl(35 24% 40% / 0.06),
+      0 6px 14px hsl(35 24% 40% / 0.07),
+      0 18px 36px hsl(35 24% 40% / 0.06);
+    --shadow-btn:
+      0 1px 1.5px hsl(255 50% 30% / 0.24),
+      0 2px 5px   hsl(255 50% 30% / 0.22),
+      inset 0 1px 0 hsl(0 0% 100% / 0.18);
+    --shadow-btn-hov:
+      0 2px 4px hsl(255 50% 30% / 0.26),
+      0 5px 14px hsl(255 50% 30% / 0.26),
+      inset 0 1px 0 hsl(0 0% 100% / 0.18);
+    --shadow-knob:
+      0 1px 1px hsl(218 30% 18% / 0.12),
+      0 2px 4px hsl(218 30% 18% / 0.16),
+      0 0 0 0.5px hsl(218 30% 18% / 0.04);
+
+    /* Geometry — concentric radii (outer = inner + padding) */
+    --card-radius: 22px;
+    --card-pad:    7px;
+    --row-radius:  15px;   /* 22 - 7 = 15 */
+  }
+
+  /* DARK THEME — rebind the same names. Elevation in dark mode is a light
+     RING + lighter surfaces, not cast shadows. */
+  html[data-theme="dark"] {
+    --stage-from: hsl(232 18% 12%);
+    --stage-to:   hsl(234 20% 8%);
+
+    --card:           hsl(230 16% 15%);
+    --card-2:         hsl(230 14% 18.5%);
+    --card-border:    hsl(230 12% 26%);
+    --hairline:       hsl(230 10% 24%);
+
+    --text-primary:   hsl(220 18% 96%);
+    --text-secondary: hsl(222 12% 70%);
+    --text-tertiary:  hsl(222 10% 55%);
+
+    --accent:         hsl(254 90% 72%);
+    --accent-hover:   hsl(254 92% 76%);
+    --accent-press:   hsl(254 88% 68%);
+    --accent-ink:     hsl(252 40% 12%);
+    --accent-soft:    hsl(254 40% 24%);
+    --focus-ring:     hsl(254 95% 76%);
+
+    --track-off:      hsl(230 10% 32%);
+    --track-off-hov:  hsl(230 10% 37%);
+    --track-on:       hsl(150 52% 46%);
+    --track-on-hov:   hsl(150 54% 51%);
+    --knob:           hsl(228 18% 92%);
+
+    --shadow-card:
+      0 0 0 1px hsl(0 0% 100% / 0.07),
+      0 1px 0 hsl(0 0% 100% / 0.04) inset;
+    --shadow-btn:
+      0 0 0 1px hsl(254 60% 40% / 0.5),
+      0 1px 2px hsl(0 0% 0% / 0.4),
+      inset 0 1px 0 hsl(0 0% 100% / 0.12);
+    --shadow-btn-hov:
+      0 0 0 1px hsl(254 70% 50% / 0.6),
+      0 2px 8px hsl(0 0% 0% / 0.45),
+      inset 0 1px 0 hsl(0 0% 100% / 0.14);
+    --shadow-knob:
+      0 1px 2px hsl(0 0% 0% / 0.45),
+      0 0 0 0.5px hsl(0 0% 0% / 0.3);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    display: grid;
+    place-items: center;
+    padding: 32px 22px;
+    background: radial-gradient(120% 120% at 50% 0%, var(--stage-from), var(--stage-to));
+    color: var(--text-primary);
+    transition: background-color var(--duration-slower) var(--ease-in-out);
+    min-height: 100%;
+  }
+
+  /* THE PANEL */
+  .panel {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-card);
+    padding: var(--card-pad);
+    /* Color/shadow transitions are GATED behind .theming so normal
+       interactions feel instant and the theme flip is one crossfade. */
+  }
+
+  .panel__body { padding: 17px 17px 7px; }
+
+  .panel__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 7px;
+  }
+
+  .panel__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 9px;
+  }
+  .panel__eyebrow svg { width: 13px; height: 13px; }
+
+  .panel__title {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 650;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    text-wrap: balance;
+  }
+
+  .panel__lede {
+    margin: 8px 0 0;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    text-wrap: pretty;
+    max-width: 34ch;
+  }
+
+  /* PRIMARY BUTTON */
+  .actions { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px 0 18px;       /* trailing-icon side 2px less */
+    height: 42px;
+    border: 0;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 580;
+    letter-spacing: -0.006em;
+    color: var(--accent-ink);
+    background: var(--accent);
+    box-shadow: var(--shadow-btn);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition:
+      transform var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-standard);
+  }
+  .btn svg { width: 16px; height: 16px; flex: none; }
+  .btn__label { display: inline-block; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover {
+      background: var(--accent-hover);
+      box-shadow: var(--shadow-btn-hov);
+      transform: translateY(-1px);
+    }
+  }
+  .btn:active {
+    transform: scale(0.96);
+    background: var(--accent-press);
+    box-shadow: var(--shadow-btn);
+    transition-duration: var(--duration-fast);
+  }
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus-ring), var(--shadow-btn);
+  }
+
+  .btn[data-loading] { cursor: progress; }
+  .btn[data-loading] .btn__label { opacity: 0; }
+  .btn[data-loading] .btn__icon { opacity: 0; }
+  .btn__spinner {
+    position: absolute; inset: 0; margin: auto;
+    width: 17px; height: 17px; opacity: 0; pointer-events: none;
+  }
+  .btn[data-loading] .btn__spinner { opacity: 1; }
+  .btn__spinner circle {
+    fill: none; stroke: var(--accent-ink); stroke-width: 2.4; stroke-linecap: round;
+    stroke-dasharray: 38 100; transform-origin: center; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .btn[data-saved] { background: var(--track-on); box-shadow: var(--shadow-btn); }
+  .btn[data-saved] .btn__label { opacity: 1; }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center; height: 42px; padding: 0 12px;
+    border: 0; background: none; border-radius: 10px;
+    font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-ghost:hover { color: var(--text-primary); background: var(--card-2); }
+  }
+  .btn-ghost:active { transform: scale(0.97); }
+  .btn-ghost:focus-visible {
+    outline: none; box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus-ring);
+  }
+
+  /* SETTINGS ROW (nested inset surface) — concentric radius */
+  .setting {
+    display: flex; align-items: center; gap: 14px; margin-top: 18px; padding: 13px 14px;
+    background: var(--card-2); border: 1px solid var(--hairline); border-radius: var(--row-radius);
+  }
+  .setting__icon {
+    flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .setting__icon svg { width: 17px; height: 17px; }
+  .setting__text { min-width: 0; display: flex; flex-direction: column; gap: 2px; margin-right: auto; }
+  .setting__label { font-size: 14px; font-weight: 560; line-height: 1.25; color: var(--text-primary); letter-spacing: -0.008em; }
+  .setting__desc { font-size: 12.5px; line-height: 1.35; color: var(--text-secondary); text-wrap: pretty; }
+
+  /* The settings toggle (pill switch) */
+  .toggle {
+    --tw: 46px; --th: 28px; --ksize: 22px; --kinset: 3px;
+    --ktravel: calc(var(--tw) - var(--ksize) - 2 * var(--kinset));
+    position: relative; flex: none; display: inline-flex; align-items: center;
+    width: var(--tw); height: 44px; margin: -8px 0;
+    border: 0; padding: 0; background: none; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .toggle__input {
+    position: absolute; inset: 0; margin: 0;
+    width: 100%; height: 100%; opacity: 0; cursor: pointer;
+    z-index: 1;                       /* ON TOP of the track so it actually clicks */
+  }
+  .toggle__track {
+    position: relative; width: var(--tw); height: var(--th); border-radius: 999px;
+    background: var(--track-off); box-shadow: inset 0 1px 2px hsl(0 0% 0% / 0.12);
+    transition: background-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+  }
+  .toggle__knob {
+    position: absolute; top: var(--kinset); left: var(--kinset);
+    width: var(--ksize); height: var(--ksize); border-radius: 999px;
+    background: var(--knob); box-shadow: var(--shadow-knob);
+    transform: translateX(0); transform-origin: left center;
+    transition: transform var(--duration-base) var(--ease-throw), width var(--duration-fast) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+    will-change: transform;
+  }
+  .toggle__input:checked ~ .toggle__track { background: var(--track-on); }
+  .toggle__input:checked ~ .toggle__track .toggle__knob { transform: translateX(var(--ktravel)); transform-origin: right center; }
+  @media (hover: hover) and (pointer: fine) {
+    .toggle:hover .toggle__track { background: var(--track-off-hov); }
+    .toggle:hover .toggle__input:checked ~ .toggle__track { background: var(--track-on-hov); }
+  }
+  .toggle:active .toggle__knob { width: calc(var(--ksize) + 3px); }
+  .toggle:active .toggle__input:checked ~ .toggle__track .toggle__knob { transform: translateX(calc(var(--ktravel) - 3px)); }
+  .toggle__input:focus-visible ~ .toggle__track {
+    box-shadow: 0 0 0 2px var(--card-2), 0 0 0 4px var(--focus-ring), inset 0 1px 2px hsl(0 0% 0% / 0.12);
+  }
+
+  /* ============================================================
+     THE THEME SWITCH (corner) — a sun and moon pill. The knob
+     slides and its sun cross-fades into a moon; the track tints
+     to night. The native checkbox sits ON TOP (z-index) so the
+     whole pill is reliably clickable. Interruptible, origin-aware.
+     ============================================================ */
+  .themeswitch {
+    --w: 60px; --h: 32px; --orb: 26px; --inset: 3px;
+    --travel: calc(var(--w) - var(--orb) - 2 * var(--inset));
+    position: relative; flex: none; display: inline-flex; align-items: center;
+    width: var(--w); height: 44px; margin: -6px -2px 0 0;
+    border: 0; padding: 0; background: none; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .themeswitch__input {
+    position: absolute; inset: 0; margin: 0;
+    width: 100%; height: 100%; opacity: 0; cursor: pointer;
+    z-index: 1;                       /* ON TOP so the whole pill is clickable */
+  }
+
+  .tsw {
+    position: relative; width: var(--w); height: var(--h); border-radius: 999px;
+    background: hsl(204 46% 84%);
+    box-shadow: inset 0 1px 2px hsl(204 40% 30% / 0.20), inset 0 0 0 1px hsl(204 40% 50% / 0.18);
+    transition: background-color var(--duration-slow) var(--ease-in-out), box-shadow var(--duration-base) var(--ease-standard);
+  }
+  .themeswitch__input:checked ~ .tsw {
+    background: hsl(248 36% 26%);
+    box-shadow: inset 0 1px 2px hsl(248 40% 10% / 0.5), inset 0 0 0 1px hsl(248 42% 54% / 0.4);
+  }
+
+  /* sun / moon hints etched in the track */
+  .tsw__hint { position: absolute; top: 50%; transform: translateY(-50%); transition: opacity var(--duration-slow) var(--ease-standard); }
+  .tsw__hint--sun  { left: 8px;  width: 13px; height: 13px; color: hsl(40 92% 52%);  opacity: 1; }
+  .tsw__hint--moon { right: 9px; width: 11px; height: 11px; color: hsl(228 50% 90%); opacity: 0.45; }
+  .themeswitch__input:checked ~ .tsw .tsw__hint--sun  { opacity: 0.3; }
+  .themeswitch__input:checked ~ .tsw .tsw__hint--moon { opacity: 1; }
+
+  /* the sliding knob; its sun morphs into a moon */
+  .tsw__knob {
+    position: absolute; top: var(--inset); left: var(--inset);
+    width: var(--orb); height: var(--orb); border-radius: 999px;
+    background: hsl(0 0% 100%); box-shadow: var(--shadow-knob);
+    display: grid; place-items: center;
+    transform: translateX(0); transform-origin: left center;
+    transition:
+      transform var(--duration-base) var(--ease-throw),
+      width var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-slow) var(--ease-in-out),
+      box-shadow var(--duration-base) var(--ease-standard);
+    will-change: transform;
+  }
+  .themeswitch__input:checked ~ .tsw .tsw__knob {
+    transform: translateX(var(--travel)); transform-origin: right center; background: hsl(228 40% 96%);
+  }
+  .tsw__icon {
+    grid-area: 1 / 1; width: 15px; height: 15px;
+    transition: opacity var(--duration-slow) var(--ease-standard), transform var(--duration-slow) var(--ease-throw);
+  }
+  .tsw__icon--sun  { color: hsl(40 92% 50%);  opacity: 1; transform: rotate(0deg) scale(1); }
+  .tsw__icon--moon { color: hsl(248 38% 42%); opacity: 0; transform: rotate(-90deg) scale(0.4); }
+  .themeswitch__input:checked ~ .tsw .tsw__icon--sun  { opacity: 0; transform: rotate(90deg) scale(0.4); }
+  .themeswitch__input:checked ~ .tsw .tsw__icon--moon { opacity: 1; transform: rotate(0deg) scale(1); }
+
+  .themeswitch:active .tsw__knob { width: calc(var(--orb) + 3px); }
+  .themeswitch:active .themeswitch__input:checked ~ .tsw .tsw__knob { transform: translateX(calc(var(--travel) - 3px)); }
+
+  .themeswitch__input:focus-visible ~ .tsw {
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus-ring), inset 0 0 0 1px hsl(204 40% 50% / 0.18);
+  }
+  .themeswitch__input:checked:focus-visible ~ .tsw {
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus-ring), inset 0 0 0 1px hsl(248 42% 54% / 0.4);
+  }
+
+  /* ============================================================
+     THE DELIBERATE THEME CROSSFADE
+     During a flip we add .theming to <html>. Only THEN do the
+     panel's color/shadow properties transition, as one coordinated
+     move. The rest of the time they are instant, so hover/press
+     stay snappy and we avoid the "every property smears" theme bug.
+     ============================================================ */
+  html.theming .panel,
+  html.theming .panel *,
+  html.theming body {
+    transition-property: background-color, border-color, color, box-shadow, fill, stroke !important;
+    transition-duration: var(--duration-slower) !important;
+    transition-timing-function: var(--ease-in-out) !important;
+  }
+  /* Don't let the crossfade override the switch's own transform motion */
+  html.theming .tsw__knob,
+  html.theming .tsw__icon,
+  html.theming .tsw__hint,
+  html.theming .toggle__knob {
+    transition-property: transform, opacity, background-color, box-shadow, width !important;
+    transition-duration: var(--duration-slow) !important;
+  }
+
+  /* FORCED COLORS — keep essential boundaries paintable */
+  @media (forced-colors: active) {
+    .panel, .setting, .tsw, .toggle__track { border: 1px solid CanvasText; }
+    .btn:focus-visible,
+    .toggle__input:focus-visible ~ .toggle__track,
+    .themeswitch__input:focus-visible ~ .tsw {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+  }
+
+  /* REDUCED MOTION — substitute (crossfade/instant), don't delete.
+     The theme flip still HAPPENS; travel, scale, and the spring throw go. */
+  @media (prefers-reduced-motion: reduce) {
+    body { transition: background-color var(--duration-fast) linear; }
+    .tsw__knob, .toggle__knob {
+      transition: transform var(--duration-fast) linear, background-color var(--duration-fast) linear;
+      will-change: auto;
+    }
+    .tsw__icon, .tsw__hint,
+    .btn, .btn-ghost, .toggle__track {
+      transition-duration: var(--duration-fast);
+      transition-timing-function: linear;
+    }
+    .btn:hover { transform: none; }
+    .toggle:active .toggle__knob { width: var(--ksize); }
+    .themeswitch:active .tsw__knob { width: var(--orb); }
+    html.theming .panel,
+    html.theming .panel *,
+    html.theming body {
+      transition-duration: var(--duration-fast) !important;
+      transition-timing-function: linear !important;
+    }
+    .btn__spinner circle { animation-duration: 1.2s; }
+  }
+</style>
+</head>
+<body>
+  <div class="panel" role="region" aria-labelledby="panelTitle">
+    <div class="panel__body">
+      <div class="panel__head">
+        <div class="panel__heading">
+          <span class="panel__eyebrow">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 5.5A2.5 2.5 0 0 1 5.5 3h5A2.5 2.5 0 0 1 13 5.5v5a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 3 10.5z" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M8 3v10" stroke="currentColor" stroke-width="1.3"/>
+            </svg>
+            Appearance
+          </span>
+          <h2 class="panel__title" id="panelTitle">Make it yours</h2>
+          <p class="panel__lede">Pick a look that feels right. Your theme syncs across every device on this account.</p>
+        </div>
+
+        <!-- Corner theme switch: a sun and moon pill -->
+        <span class="themeswitch">
+          <input class="themeswitch__input" type="checkbox" role="switch"
+                 id="themeToggle" aria-label="Dark theme" />
+          <span class="tsw" aria-hidden="true">
+            <svg class="tsw__hint tsw__hint--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            </svg>
+            <svg class="tsw__hint tsw__hint--moon" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+            </svg>
+            <span class="tsw__knob">
+              <svg class="tsw__icon tsw__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4.2"/>
+                <path d="M12 1.5v2.4M12 20.1v2.4M3.6 3.6l1.7 1.7M18.7 18.7l1.7 1.7M1.5 12h2.4M20.1 12h2.4M3.6 20.4l1.7-1.7M18.7 5.3l1.7-1.7"/>
+              </svg>
+              <svg class="tsw__icon tsw__icon--moon" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+              </svg>
+            </span>
+          </span>
+        </span>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="saveBtn" type="button">
+          <span class="btn__icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none">
+              <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="btn__label" id="saveLabel">Save preference</span>
+          <svg class="btn__spinner" viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="8" cy="8" r="6"></circle>
+          </svg>
+        </button>
+        <button class="btn-ghost" id="resetBtn" type="button">Reset</button>
+      </div>
+
+      <div class="setting">
+        <span class="setting__icon" aria-hidden="true">
+          <svg viewBox="0 0 18 18" fill="none">
+            <path d="M9 2v1.5M9 14.5V16M2 9h1.5M14.5 9H16M3.8 3.8l1.1 1.1M13.1 13.1l1.1 1.1M3.8 14.2l1.1-1.1M13.1 4.9l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="9" cy="9" r="3.2" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
+        </span>
+        <span class="setting__text">
+          <span class="setting__label" id="autoLabel">Match system</span>
+          <span class="setting__desc" id="autoDesc">Follow your device's light or dark setting automatically.</span>
+        </span>
+        <span class="toggle">
+          <input class="toggle__input" type="checkbox" role="switch"
+                 id="autoToggle" aria-labelledby="autoLabel" aria-describedby="autoDesc" />
+          <span class="toggle__track" aria-hidden="true">
+            <span class="toggle__knob"></span>
+          </span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div aria-live="polite" aria-atomic="true"
+       style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;"
+       id="srLive"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var root      = document.documentElement;
+  var themeIn   = document.getElementById("themeToggle");
+  var autoIn    = document.getElementById("autoToggle");
+  var saveBtn   = document.getElementById("saveBtn");
+  var saveLabel = document.getElementById("saveLabel");
+  var resetBtn  = document.getElementById("resetBtn");
+  var srLive    = document.getElementById("srLive");
+
+  var mq = window.matchMedia("(prefers-color-scheme: dark)");
+  var reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  /* applyTheme — flips data-theme, but FIRST adds .theming so the panel's
+     colors crossfade as ONE deliberate move. The class is removed after the
+     transition so subsequent hovers/presses stay instant. The flip is
+     optimistic: the UI updates immediately, never waiting on anything. */
+  var clearTimer = null;
+  function applyTheme(next, announce) {
+    if (root.getAttribute("data-theme") === next) return;
+    if (clearTimer) { clearTimeout(clearTimer); }
+    root.classList.add("theming");
+    root.setAttribute("data-theme", next);
+    var ms = reduceMq.matches ? 150 : 470;
+    clearTimer = setTimeout(function () {
+      root.classList.remove("theming");
+      clearTimer = null;
+    }, ms);
+    if (announce) {
+      srLive.textContent = (next === "dark" ? "Dark" : "Light") + " theme on";
+    }
+  }
+
+  function syncSwitch() {
+    themeIn.checked = root.getAttribute("data-theme") === "dark";
+  }
+
+  /* corner theme switch — native checkbox flips .checked for free (optimistic),
+     we mirror it onto data-theme. */
+  themeIn.addEventListener("change", function () {
+    if (autoIn.checked) { autoIn.checked = false; }
+    applyTheme(themeIn.checked ? "dark" : "light", true);
+  });
+
+  /* "Match system" toggle */
+  function onSystemChange() {
+    if (!autoIn.checked) return;
+    applyTheme(mq.matches ? "dark" : "light", true);
+    syncSwitch();
+  }
+  if (mq.addEventListener) mq.addEventListener("change", onSystemChange);
+  else if (mq.addListener) mq.addListener(onSystemChange);
+
+  autoIn.addEventListener("change", function () {
+    if (autoIn.checked) {
+      applyTheme(mq.matches ? "dark" : "light", true);
+      syncSwitch();
+      srLive.textContent = "Matching system theme";
+    } else {
+      srLive.textContent = "Manual theme";
+    }
+  });
+
+  /* primary button: optimistic save with flicker-guarded loader */
+  var SHOW_DELAY = 180, MIN_VISIBLE = 360, HOLD = 1500;
+  var saving = false, defaultLabel = saveLabel.textContent;
+  var showTimer = null, doneTimer = null, resetLabelTimer = null;
+
+  function fakeSave() {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, 500 + Math.random() * 350);
+    });
+  }
+
+  saveBtn.addEventListener("click", function () {
+    if (saving) return;
+    saving = true;
+    saveBtn.removeAttribute("data-saved");
+    if (resetLabelTimer) clearTimeout(resetLabelTimer);
+
+    var shownAt = 0;
+    showTimer = setTimeout(function () {
+      saveBtn.setAttribute("data-loading", "");
+      saveBtn.setAttribute("aria-busy", "true");
+      shownAt = Date.now();
+    }, SHOW_DELAY);
+
+    fakeSave().then(function () {
+      var elapsed = shownAt ? Date.now() - shownAt : 0;
+      var wait = shownAt ? Math.max(0, MIN_VISIBLE - elapsed) : 0;
+      clearTimeout(showTimer);
+      doneTimer = setTimeout(function () {
+        saveBtn.removeAttribute("data-loading");
+        saveBtn.removeAttribute("aria-busy");
+        saveBtn.setAttribute("data-saved", "");
+        saveLabel.textContent = "Saved";
+        srLive.textContent = "Preference saved";
+        saving = false;
+        resetLabelTimer = setTimeout(function () {
+          saveBtn.removeAttribute("data-saved");
+          saveLabel.textContent = defaultLabel;
+        }, HOLD);
+      }, wait);
+    });
+  });
+
+  resetBtn.addEventListener("click", function () {
+    autoIn.checked = false;
+    applyTheme("light", true);
+    syncSwitch();
+    saveBtn.removeAttribute("data-saved");
+    if (resetLabelTimer) clearTimeout(resetLabelTimer);
+    saveLabel.textContent = defaultLabel;
+  });
+
+  syncSwitch();
+})();
+</script>
+</body>
+</html>

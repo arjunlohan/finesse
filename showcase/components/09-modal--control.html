@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Modal dialog</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --card: #ffffff;
+
+    --ink: hsl(225 16% 15%);
+    --ink-soft: hsl(225 9% 44%);
+    --ink-faint: hsl(225 8% 60%);
+
+    --hairline: hsl(225 16% 91%);
+    --hairline-strong: hsl(225 16% 85%);
+
+    /* accent — calm, confident indigo */
+    --accent: hsl(231 64% 56%);
+    --accent-hi: hsl(231 70% 62%);
+    --accent-lo: hsl(231 66% 48%);
+    --accent-ring: hsl(231 70% 56% / 0.32);
+
+    --focus: hsl(222 92% 56%);
+
+    --scrim: hsl(228 30% 18% / 0.42);
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; height: 100%; }
+
+  body {
+    background: var(--surface);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 28px;
+    min-height: 100vh;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 392px;
+    text-align: center;
+  }
+
+  .stage__eyebrow {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .stage__hint {
+    margin: 0 0 22px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- trigger button ---------- */
+  .trigger {
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--hairline-strong);
+    background: linear-gradient(180deg, #ffffff, hsl(225 20% 99%));
+    color: var(--ink);
+    font-size: 14.5px;
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    box-shadow:
+      0 1px 1px hsl(225 24% 30% / 0.04),
+      0 2px 6px -2px hsl(225 24% 30% / 0.10);
+    transition:
+      transform 180ms var(--ease-soft),
+      box-shadow 220ms var(--ease-soft),
+      border-color 220ms var(--ease-soft),
+      background 220ms var(--ease-soft);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .trigger svg { width: 17px; height: 17px; display: block; color: var(--ink-soft); transition: color 220ms var(--ease-soft); }
+  .trigger:hover {
+    border-color: var(--hairline-strong);
+    box-shadow:
+      0 1px 1px hsl(225 24% 30% / 0.05),
+      0 6px 16px -6px hsl(225 24% 30% / 0.18);
+    transform: translateY(-1px);
+  }
+  .trigger:hover svg { color: var(--accent); }
+  .trigger:active { transform: translateY(0) scale(0.985); box-shadow: 0 1px 2px hsl(225 24% 30% / 0.10); }
+  .trigger:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--focus);
+  }
+
+  /* ---------- overlay / scrim ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--scrim);
+    opacity: 0;
+    transition: opacity 240ms var(--ease-soft);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  .overlay[data-open="true"] {
+    opacity: 1;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+  .overlay[hidden] { display: none; }
+
+  /* ---------- dialog ---------- */
+  .dialog {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 18px;
+    box-shadow:
+      0 1px 1px hsl(228 30% 18% / 0.04),
+      0 12px 28px -8px hsl(228 32% 18% / 0.22),
+      0 36px 60px -24px hsl(228 32% 18% / 0.30);
+    padding: 26px 26px 22px;
+    text-align: left;
+    transform: translateY(8px) scale(0.965);
+    opacity: 0;
+    transition:
+      transform 300ms var(--ease-spring),
+      opacity 220ms var(--ease-soft);
+    transform-origin: center;
+  }
+  .overlay[data-open="true"] .dialog {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  .dialog__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 16px;
+    background: hsl(231 70% 96%);
+    border: 1px solid hsl(231 60% 90%);
+    color: var(--accent-lo);
+  }
+  .dialog__icon svg { width: 21px; height: 21px; display: block; }
+
+  .dialog__title {
+    margin: 0;
+    font-size: 17.5px;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    line-height: 1.3;
+    color: var(--ink);
+    padding-right: 28px;
+  }
+  .dialog__body {
+    margin: 9px 0 0;
+    font-size: 14px;
+    line-height: 1.58;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- close (x) ---------- */
+  .dialog__close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    transition: background 160ms var(--ease-soft), color 160ms var(--ease-soft);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dialog__close svg { width: 16px; height: 16px; display: block; }
+  .dialog__close:hover { background: hsl(225 16% 95%); color: var(--ink); }
+  .dialog__close:active { background: hsl(225 16% 92%); }
+  .dialog__close:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus);
+  }
+
+  /* ---------- actions ---------- */
+  .dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .btn {
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    cursor: pointer;
+    padding: 9px 17px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 550;
+    letter-spacing: -0.004em;
+    transition:
+      transform 150ms var(--ease-soft),
+      box-shadow 200ms var(--ease-soft),
+      background 180ms var(--ease-soft),
+      border-color 180ms var(--ease-soft);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(0.975); }
+
+  .btn--ghost {
+    background: #ffffff;
+    border: 1px solid var(--hairline-strong);
+    color: var(--ink-soft);
+  }
+  .btn--ghost:hover { background: hsl(225 16% 97%); color: var(--ink); border-color: var(--hairline-strong); }
+  .btn--ghost:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus);
+  }
+
+  .btn--primary {
+    border: 1px solid var(--accent-lo);
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    color: #fff;
+    box-shadow:
+      0 1px 1px hsl(231 60% 30% / 0.20),
+      0 4px 12px -4px var(--accent-ring),
+      inset 0 1px 0 hsl(0 0% 100% / 0.22);
+  }
+  .btn--primary:hover {
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent-lo));
+    box-shadow:
+      0 1px 1px hsl(231 60% 30% / 0.22),
+      0 6px 18px -4px var(--accent-ring),
+      inset 0 1px 0 hsl(0 0% 100% / 0.22);
+  }
+  .btn--primary:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--card),
+      0 0 0 4px var(--focus);
+  }
+
+  /* result toast under the button */
+  .stage__result {
+    margin: 18px 0 0;
+    height: 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    opacity: 0;
+    transform: translateY(-3px);
+    transition: opacity 240ms var(--ease-soft), transform 240ms var(--ease-soft);
+  }
+  .stage__result[data-show="true"] { opacity: 1; transform: translateY(0); }
+  .stage__result b { color: var(--ink); font-weight: 600; }
+  .stage__result.is-confirm b { color: var(--accent-lo); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
+    .overlay, .dialog { transition: opacity 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <p class="stage__eyebrow">Account</p>
+    <p class="stage__hint">Permanently remove your workspace and everything in it.</p>
+
+    <button class="trigger" id="openBtn" type="button" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 6h18"/>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        <line x1="10" y1="11" x2="10" y2="17"/>
+        <line x1="14" y1="11" x2="14" y2="17"/>
+      </svg>
+      Delete workspace
+    </button>
+
+    <p class="stage__result" id="result" role="status" aria-live="polite"></p>
+  </div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div
+      class="dialog"
+      id="dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="dialogTitle"
+      aria-describedby="dialogBody">
+
+      <button class="dialog__close" id="closeBtn" type="button" aria-label="Close dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="6" y1="6" x2="18" y2="18"/>
+          <line x1="18" y1="6" x2="6" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="dialog__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+
+      <h2 class="dialog__title" id="dialogTitle">Delete this workspace?</h2>
+      <p class="dialog__body" id="dialogBody">
+        This will permanently delete the workspace, its projects, and all member access. This action cannot be undone.
+      </p>
+
+      <div class="dialog__actions">
+        <button class="btn btn--ghost" id="cancelBtn" type="button">Cancel</button>
+        <button class="btn btn--primary" id="confirmBtn" type="button">Delete workspace</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var openBtn   = document.getElementById('openBtn');
+      var overlay   = document.getElementById('overlay');
+      var dialog    = document.getElementById('dialog');
+      var closeBtn  = document.getElementById('closeBtn');
+      var cancelBtn = document.getElementById('cancelBtn');
+      var confirmBtn= document.getElementById('confirmBtn');
+      var result    = document.getElementById('result');
+
+      var lastFocused = null;
+      var isOpen = false;
+      var resultTimer = null;
+
+      var FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+      function reduceMotion() {
+        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      }
+
+      function openModal() {
+        if (isOpen) return;
+        isOpen = true;
+        lastFocused = document.activeElement;
+
+        overlay.hidden = false;
+        // force reflow so the opening transition actually plays
+        void overlay.offsetWidth;
+        overlay.setAttribute('data-open', 'true');
+
+        // move focus to the safest default (Cancel) once visible
+        requestAnimationFrame(function () {
+          cancelBtn.focus({ preventScroll: true });
+        });
+
+        document.addEventListener('keydown', onKeydown, true);
+      }
+
+      function closeModal(restoreFocus) {
+        if (!isOpen) return;
+        isOpen = false;
+
+        overlay.setAttribute('data-open', 'false');
+        document.removeEventListener('keydown', onKeydown, true);
+
+        var finish = function () {
+          overlay.hidden = true;
+          overlay.removeEventListener('transitionend', onEnd);
+          if (restoreFocus !== false && lastFocused && lastFocused.focus) {
+            lastFocused.focus({ preventScroll: true });
+          }
+        };
+
+        var done = false;
+        var onEnd = function (e) {
+          if (e && e.target !== overlay) return;
+          if (done) return;
+          done = true;
+          finish();
+        };
+
+        if (reduceMotion()) {
+          done = true;
+          finish();
+        } else {
+          overlay.addEventListener('transitionend', onEnd);
+          // safety fallback in case transitionend doesn't fire
+          setTimeout(function () { if (!done) { done = true; finish(); } }, 360);
+        }
+      }
+
+      function flashResult(kind, html) {
+        clearTimeout(resultTimer);
+        result.className = 'stage__result' + (kind === 'confirm' ? ' is-confirm' : '');
+        result.innerHTML = html;
+        // re-trigger the entrance
+        result.removeAttribute('data-show');
+        void result.offsetWidth;
+        result.setAttribute('data-show', 'true');
+        resultTimer = setTimeout(function () {
+          result.removeAttribute('data-show');
+        }, 3200);
+      }
+
+      function onKeydown(e) {
+        if (!isOpen) return;
+
+        if (e.key === 'Escape' || e.key === 'Esc') {
+          e.preventDefault();
+          e.stopPropagation();
+          closeModal(true);
+          flashResult('cancel', 'Dismissed.');
+          return;
+        }
+
+        if (e.key === 'Tab') {
+          var nodes = Array.prototype.filter.call(
+            dialog.querySelectorAll(FOCUSABLE),
+            function (el) { return el.offsetParent !== null && !el.disabled; }
+          );
+          if (!nodes.length) return;
+          var first = nodes[0];
+          var last  = nodes[nodes.length - 1];
+          var active = document.activeElement;
+
+          if (e.shiftKey) {
+            if (active === first || !dialog.contains(active)) {
+              e.preventDefault();
+              last.focus();
+            }
+          } else {
+            if (active === last || !dialog.contains(active)) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        }
+      }
+
+      // open
+      openBtn.addEventListener('click', openModal);
+
+      // close paths
+      closeBtn.addEventListener('click', function () {
+        closeModal(true);
+        flashResult('cancel', 'Dismissed.');
+      });
+      cancelBtn.addEventListener('click', function () {
+        closeModal(true);
+        flashResult('cancel', 'Cancelled — nothing was deleted.');
+      });
+      confirmBtn.addEventListener('click', function () {
+        closeModal(true);
+        flashResult('confirm', '<b>Workspace deleted.</b>');
+      });
+
+      // backdrop click — only when the press starts AND ends on the scrim itself
+      var downOnScrim = false;
+      overlay.addEventListener('mousedown', function (e) {
+        downOnScrim = (e.target === overlay);
+      });
+      overlay.addEventListener('mouseup', function (e) {
+        if (downOnScrim && e.target === overlay) {
+          closeModal(true);
+          flashResult('cancel', 'Dismissed.');
+        }
+        downOnScrim = false;
+      });
+
+      // guard against text-selection drags ending outside resetting state
+      overlay.addEventListener('click', function (e) { e.stopPropagation(); });
+    })();
+  </script>
+</body>
+</html>

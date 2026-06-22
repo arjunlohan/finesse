@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Toggle</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --card: #ffffff;
+    --ink: hsl(225 14% 14%);
+    --ink-soft: hsl(225 8% 46%);
+    --ink-faint: hsl(225 7% 62%);
+    --hairline: hsl(225 14% 92%);
+    --hairline-strong: hsl(225 14% 86%);
+
+    /* off-state track */
+    --track-off: hsl(225 12% 88%);
+    --track-off-hi: hsl(225 14% 93%);
+    --track-off-lo: hsl(225 14% 82%);
+
+    /* on-state track — confident, saturated green */
+    --on: hsl(151 58% 43%);
+    --on-hi: hsl(151 62% 50%);
+    --on-lo: hsl(151 64% 36%);
+    --on-ring: hsl(151 64% 43% / 0.32);
+
+    --focus: hsl(222 90% 56%);
+
+    --knob: #ffffff;
+    --knob-edge: hsl(225 16% 84%);
+
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+  }
+
+  body {
+    background: var(--surface);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 28px;
+    min-height: 100vh;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 392px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 18px;
+    box-shadow:
+      0 1px 1px hsl(225 20% 20% / 0.025),
+      0 8px 24px -12px hsl(225 30% 20% / 0.12);
+    overflow: hidden;
+  }
+
+  .card__head {
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .card__eyebrow {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- the settings row ---------- */
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 20px;
+    cursor: pointer;
+    position: relative;
+    transition: background 160ms var(--ease-soft);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .row:hover { background: hsl(225 16% 98%); }
+  .row:active { background: hsl(225 16% 97%); }
+
+  .row__icon {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: hsl(225 16% 96%);
+    color: var(--ink-soft);
+    border: 1px solid var(--hairline);
+    transition: background 280ms var(--ease-soft), color 280ms var(--ease-soft), border-color 280ms var(--ease-soft);
+  }
+  .row__icon svg { width: 19px; height: 19px; display: block; }
+
+  .row[data-on="true"] .row__icon {
+    background: hsl(151 54% 95%);
+    color: var(--on-lo);
+    border-color: hsl(151 44% 84%);
+  }
+
+  .row__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    user-select: none;
+  }
+  .row__label {
+    display: block;
+    font-size: 15px;
+    font-weight: 550;
+    line-height: 1.25;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .row__desc {
+    display: block;
+    margin-top: 3px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- the switch ---------- */
+  .switch {
+    flex: none;
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    width: 52px;
+    height: 31px;
+    border-radius: 999px;
+    background: var(--track-off);
+    box-shadow:
+      inset 0 0 0 1px hsl(225 14% 80% / 0.9),
+      inset 0 2px 4px hsl(225 18% 60% / 0.28),
+      inset 0 -1px 0 hsl(0 0% 100% / 0.55);
+    transition:
+      background 320ms var(--ease-soft),
+      box-shadow 320ms var(--ease-soft);
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+
+  /* coloured fill that grows from the right when turning on */
+  .switch::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, var(--on-hi), var(--on));
+    box-shadow:
+      inset 0 0 0 1px var(--on-lo),
+      inset 0 1px 1px hsl(0 0% 100% / 0.35);
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 280ms var(--ease-soft), transform 360ms var(--ease-spring);
+  }
+
+  /* the knob */
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #ffffff, hsl(225 16% 96%));
+    box-shadow:
+      0 1px 1px hsl(225 30% 30% / 0.16),
+      0 3px 6px hsl(225 30% 30% / 0.22),
+      inset 0 -1px 1px hsl(225 16% 86% / 0.6),
+      inset 0 1px 0 hsl(0 0% 100% / 0.9);
+    transition:
+      transform 360ms var(--ease-spring),
+      width 200ms var(--ease-soft),
+      box-shadow 260ms var(--ease-soft);
+    z-index: 1;
+  }
+
+  /* ON state */
+  .switch[aria-checked="true"] {
+    background: var(--on);
+    box-shadow:
+      inset 0 0 0 1px var(--on-lo),
+      inset 0 1px 2px hsl(151 50% 30% / 0.25);
+  }
+  .switch[aria-checked="true"]::before {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .switch[aria-checked="true"]::after {
+    transform: translateX(21px);
+  }
+
+  /* hover — subtle lift on the knob */
+  .switch:hover::after {
+    box-shadow:
+      0 1px 1px hsl(225 30% 30% / 0.18),
+      0 4px 9px hsl(225 30% 30% / 0.26),
+      inset 0 -1px 1px hsl(225 16% 86% / 0.6),
+      inset 0 1px 0 hsl(0 0% 100% / 0.9);
+  }
+  .switch:hover:not([aria-checked="true"]) {
+    background: var(--track-off-lo);
+  }
+
+  /* press — squish the knob horizontally, tactile */
+  .switch:active::after {
+    width: 30px;
+  }
+  .switch[aria-checked="true"]:active::after {
+    transform: translateX(16px);
+  }
+
+  /* keyboard focus ring — only on keyboard, not mouse */
+  .switch:focus-visible {
+    box-shadow:
+      inset 0 0 0 1px hsl(225 14% 80% / 0.9),
+      inset 0 2px 4px hsl(225 18% 60% / 0.28),
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--focus);
+  }
+  .switch[aria-checked="true"]:focus-visible {
+    box-shadow:
+      inset 0 0 0 1px var(--on-lo),
+      inset 0 1px 2px hsl(151 50% 30% / 0.25),
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--focus);
+  }
+
+  /* tiny check/dot inside knob for extra state clarity */
+  .switch__glyph {
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    width: 25px;
+    height: 25px;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    z-index: 2;
+    pointer-events: none;
+    transition: transform 360ms var(--ease-spring);
+  }
+  .switch[aria-checked="true"] .switch__glyph {
+    transform: translate(21px, -50%);
+  }
+  .switch[aria-checked="true"]:active .switch__glyph {
+    transform: translate(16px, -50%);
+  }
+  .switch__glyph svg { width: 13px; height: 13px; display: block; }
+  .switch__glyph .g-off,
+  .switch__glyph .g-on {
+    grid-area: 1 / 1;
+    transition: opacity 200ms var(--ease-soft), transform 280ms var(--ease-spring);
+  }
+  .switch__glyph .g-off { color: var(--ink-faint); opacity: 1; transform: scale(1); }
+  .switch__glyph .g-on  { color: var(--on); opacity: 0; transform: scale(0.4) rotate(-30deg); }
+  .switch[aria-checked="true"] .switch__glyph .g-off { opacity: 0; transform: scale(0.4); }
+  .switch[aria-checked="true"] .switch__glyph .g-on  { opacity: 1; transform: scale(1) rotate(0); }
+
+  /* status caption under the row */
+  .card__foot {
+    border-top: 1px solid var(--hairline);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+    box-shadow: 0 0 0 0 hsl(151 64% 43% / 0);
+    transition: background 280ms var(--ease-soft), box-shadow 280ms var(--ease-soft);
+  }
+  .row[data-on="true"] ~ .card__foot .status-dot,
+  .card[data-on="true"] .status-dot {
+    background: var(--on);
+  }
+  #statusText b { font-weight: 600; color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <section class="card" id="card" data-on="false" aria-labelledby="settingGroup">
+      <div class="card__head">
+        <p class="card__eyebrow" id="settingGroup">Notifications</p>
+      </div>
+
+      <div class="row" id="row" data-on="false">
+        <span class="row__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </span>
+
+        <span class="row__text">
+          <span class="row__label" id="rowLabel">Push notifications</span>
+          <span class="row__desc">Get alerts on this device when something needs your attention.</span>
+        </span>
+
+        <button
+          class="switch"
+          id="switch"
+          role="switch"
+          type="button"
+          aria-checked="false"
+          aria-labelledby="rowLabel">
+          <span class="switch__glyph" aria-hidden="true">
+            <svg class="g-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+            <svg class="g-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <div class="card__foot">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">Notifications are <b>off</b></span>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var sw = document.getElementById('switch');
+      var row = document.getElementById('row');
+      var card = document.getElementById('card');
+      var statusText = document.getElementById('statusText');
+
+      function render(on) {
+        sw.setAttribute('aria-checked', on ? 'true' : 'false');
+        row.setAttribute('data-on', on ? 'true' : 'false');
+        card.setAttribute('data-on', on ? 'true' : 'false');
+        statusText.innerHTML = 'Notifications are <b>' + (on ? 'on' : 'off') + '</b>';
+      }
+
+      function toggle() {
+        var next = sw.getAttribute('aria-checked') !== 'true';
+        render(next);
+      }
+
+      // Click on the switch itself
+      sw.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggle();
+      });
+
+      // Click anywhere on the row also flips it (but ignore clicks that
+      // originate on the switch, handled above, and avoid double-fire)
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('#switch')) return;
+        toggle();
+        sw.focus({ preventScroll: true });
+      });
+
+      // Keyboard: Space / Enter toggle; the button role handles most,
+      // but we make Enter explicit and prevent page scroll on Space.
+      sw.addEventListener('keydown', function (e) {
+        if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+          e.preventDefault();
+        }
+      });
+      sw.addEventListener('keyup', function (e) {
+        if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+          e.preventDefault();
+          toggle();
+        }
+      });
+
+      render(false);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hero</title>
+<style>
+  /* ----------------------------------------------------------------
+     Tokens
+     ---------------------------------------------------------------- */
+  :root {
+    /* Motion — one shared scale, referenced everywhere */
+    --duration-fast:   150ms;  /* hover, press, tint */
+    --duration-base:   200ms;  /* small reveals */
+    --duration-slow:   300ms;  /* larger surfaces */
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* in-place state change */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* entering / settling */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* exiting / leaving */
+
+    /* Color — warm near-white surface, cool near-black ink.
+       Neutrals carry a few points of saturation so nothing reads grey. */
+    --bg-page:    hsl(40 12% 98%);   /* the iframe surface */
+    --bg-card:    hsl(40 20% 99.5%); /* the hero panel, a hair brighter/cleaner */
+
+    --text-1: hsl(222 24% 11%);  /* primary — near-black, cool cast, never #000 */
+    --text-2: hsl(222 12% 36%);  /* secondary — supporting copy */
+    --text-3: hsl(222 10% 52%);  /* tertiary — eyebrow, metadata */
+
+    --accent-1:  hsl(222 26% 16%); /* primary button fill — near-black ink */
+    --accent-1h: hsl(222 30% 22%); /* primary button hover */
+
+    --hairline:  hsl(40 14% 89%);  /* warm low-contrast divider */
+    --hairline-strong: hsl(40 12% 82%);
+
+    --dot:       hsl(150 48% 42%);  /* "live" status — green, paired with a label */
+
+    /* Layered, surface-tinted shadows. Warm hue (40), low alpha,
+       offset down (light from above), blur ≈ 2× offset. */
+    --shadow-card:
+      0 0 0 1px hsl(40 18% 50% / 0.06),
+      0 1px 2px hsl(38 30% 30% / 0.05),
+      0 4px 10px hsl(38 30% 30% / 0.05),
+      0 12px 28px hsl(38 30% 30% / 0.04);
+
+    --shadow-btn:
+      0 0 0 1px hsl(222 30% 8% / 0.18),
+      0 1px 2px hsl(222 40% 8% / 0.22),
+      0 2px 6px hsl(222 40% 8% / 0.14);
+    --shadow-btn-hover:
+      0 0 0 1px hsl(222 30% 8% / 0.20),
+      0 2px 4px hsl(222 40% 8% / 0.24),
+      0 6px 14px hsl(222 40% 8% / 0.18);
+
+    --focus-ring: hsl(222 80% 52%);
+
+    /* Concentric radii: card 24, button 12 (= 24 − 12 gutter context),
+       eyebrow pill 999. */
+    --radius-card: 24px;
+    --radius-btn:  12px;
+  }
+
+  *,
+  *::before,
+  *::after { box-sizing: border-box; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-page);
+    color: var(--text-1);
+    /* subtle warmth from above so the panel reads as set into the page */
+    background-image:
+      radial-gradient(120% 80% at 50% -8%, hsl(40 28% 99%) 0%, hsl(40 12% 98%) 46%, hsl(40 10% 96.5%) 100%);
+    display: grid;
+    place-items: center;
+    min-height: 100%;
+    padding: 28px;
+  }
+
+  /* ----------------------------------------------------------------
+     The hero panel
+     ---------------------------------------------------------------- */
+  .hero {
+    position: relative;
+    width: 100%;
+    max-width: 416px;
+    background: var(--bg-card);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 40px 34px 36px;
+    /* a faint top-lit sheen inside the panel */
+    background-image:
+      linear-gradient(180deg, hsl(40 30% 100% / 0.9) 0%, hsl(40 20% 99.5% / 0) 38%);
+    overflow: hidden;
+  }
+
+  /* hairline that grounds the panel's top edge as a light catch */
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 1px 0 hsl(40 40% 100% / 0.7);
+  }
+
+  /* ----------------------------------------------------------------
+     Eyebrow
+     ---------------------------------------------------------------- */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0 0 20px;
+    padding: 5px 11px 5px 9px;
+    border-radius: 999px;
+    background: hsl(40 18% 96%);
+    box-shadow:
+      inset 0 0 0 1px var(--hairline),
+      0 1px 1px hsl(40 20% 60% / 0.06);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    /* optical: caps sit high; nudge baseline feel with line-height */
+    line-height: 1;
+  }
+
+  /* live status dot — meaning carried by color + the soft pulse + the word "Beta" label text */
+  .eyebrow .dot {
+    position: relative;
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--dot);
+    box-shadow: 0 0 0 0 hsl(150 48% 42% / 0.45);
+  }
+  .eyebrow .dot::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid hsl(150 48% 42% / 0.5);
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .eyebrow .dot::after { animation: ping 2.6s var(--ease-out) infinite; }
+  }
+  @keyframes ping {
+    0%   { transform: scale(0.6); opacity: 0.9; }
+    70%  { transform: scale(1.9); opacity: 0; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+
+  /* ----------------------------------------------------------------
+     Headline
+     ---------------------------------------------------------------- */
+  .headline {
+    margin: 0;
+    font-size: clamp(2rem, 8.6vw, 2.65rem);
+    line-height: 1.06;
+    letter-spacing: -0.025em;          /* tighten display type */
+    font-weight: 590;
+    color: var(--text-1);
+    text-wrap: balance;                /* even two-line split, no orphan */
+    /* two color tiers in one headline build hierarchy without size change */
+  }
+  .headline .muted {
+    color: var(--text-3);
+    font-weight: 560;
+  }
+
+  /* ----------------------------------------------------------------
+     Supporting paragraph
+     ---------------------------------------------------------------- */
+  .lede {
+    margin: 18px 0 0;
+    max-width: 34ch;                   /* comfortable measure */
+    font-size: 16px;                   /* body floor */
+    line-height: 1.55;
+    font-weight: 450;
+    color: var(--text-2);
+    text-wrap: pretty;                 /* no stubby last line */
+  }
+
+  /* ----------------------------------------------------------------
+     Actions
+     ---------------------------------------------------------------- */
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 30px;
+  }
+
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 46px;
+    padding: 0 19px;
+    border: none;
+    border-radius: var(--radius-btn);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 575;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition:
+      transform var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  /* generous, non-overlapping hit area (height 46 already ≥ 44) */
+  .btn:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--bg-card),
+      0 0 0 4px var(--focus-ring);
+  }
+
+  /* press — scale never below 0.95 */
+  @media (prefers-reduced-motion: no-preference) {
+    .btn:active { transform: scale(0.96); transition-duration: var(--duration-fast); }
+  }
+
+  /* --- Primary: solid near-black ink --- */
+  .btn-primary {
+    background: var(--accent-1);
+    color: hsl(40 30% 98%);
+    box-shadow: var(--shadow-btn);
+    /* optical: trailing icon → trim the icon-side (right) padding by ~2px */
+    padding-right: 17px;
+  }
+  .btn-primary::before {
+    /* subtle top sheen on the dark fill */
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.12), hsl(0 0% 100% / 0) 52%);
+  }
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background: var(--accent-1h);
+      box-shadow: var(--shadow-btn-hover);
+    }
+    .btn-primary:hover .arrow { transform: translateX(3px); }
+  }
+
+  .btn-primary .arrow {
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+
+  /* --- Secondary: quiet, hairline + tinted surface --- */
+  .btn-secondary {
+    background: hsl(40 20% 99%);
+    color: var(--text-1);
+    box-shadow:
+      inset 0 0 0 1px var(--hairline-strong),
+      0 1px 1.5px hsl(40 24% 50% / 0.05);
+  }
+  @media (hover: hover) {
+    .btn-secondary:hover {
+      background: hsl(40 22% 96.5%);
+      box-shadow:
+        inset 0 0 0 1px var(--hairline-strong),
+        0 1px 2px hsl(40 24% 50% / 0.07);
+    }
+  }
+  .btn-secondary .play {
+    /* optical: right-pointing triangle's mass sits left → nudge 1.5px right */
+    transform: translateX(1.5px);
+    color: var(--text-2);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+  @media (hover: hover) {
+    .btn-secondary:hover .play { color: var(--text-1); }
+  }
+
+  /* ----------------------------------------------------------------
+     Primary button: loading + done states (flicker-guarded, optimistic feel)
+     ---------------------------------------------------------------- */
+  .btn-primary .label,
+  .btn-primary .arrow { transition: transform var(--duration-base) var(--ease-out), opacity var(--duration-base) var(--ease-out); }
+
+  .btn-primary .spinner,
+  .btn-primary .check {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+    transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
+    pointer-events: none;
+  }
+
+  .btn-primary[data-state="loading"] .label,
+  .btn-primary[data-state="loading"] .arrow,
+  .btn-primary[data-state="done"] .label,
+  .btn-primary[data-state="done"] .arrow {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition-duration: var(--duration-fast);     /* exit faster than enter */
+    transition-timing-function: var(--ease-in);
+  }
+
+  .btn-primary[data-state="loading"] .spinner { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .btn-primary[data-state="done"]    .check   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+  .btn-primary[data-state="loading"],
+  .btn-primary[data-state="done"] { cursor: default; }
+
+  .spinner circle { stroke-linecap: round; }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn-primary[data-state="loading"] .spinner { animation: spin 0.7s linear infinite; }
+  }
+  @keyframes spin { to { transform: translate(-50%, -50%) scale(1) rotate(360deg); } }
+
+  /* ----------------------------------------------------------------
+     Entrance choreography — staged, one-shot, reduced-motion safe
+     ---------------------------------------------------------------- */
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      opacity: 0;
+      transform: translateY(10px);
+      animation: rise 560ms var(--ease-out) forwards;
+      animation-delay: var(--d, 0ms);
+    }
+  }
+  @keyframes rise {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  /* reduced-motion: substitute a gentle fade, no travel */
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 0; animation: fadein 360ms ease forwards; animation-delay: var(--d, 0ms); }
+  }
+  @keyframes fadein { to { opacity: 1; } }
+
+  /* The panel itself eases in first */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero {
+      animation: panel 620ms var(--ease-out) both;
+    }
+  }
+  @keyframes panel {
+    from { opacity: 0; transform: translateY(12px) scale(0.985); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+</style>
+</head>
+<body>
+  <main class="hero" aria-labelledby="hero-title">
+    <p class="eyebrow reveal" style="--d: 120ms">
+      <span class="dot" aria-hidden="true"></span>
+      Now in beta
+    </p>
+
+    <h1 class="headline reveal" id="hero-title" style="--d: 190ms">
+      Ship interfaces that<br />
+      <span class="muted">feel</span> handcrafted.
+    </h1>
+
+    <p class="lede reveal" style="--d: 270ms">
+      A design system that handles the thousand invisible details for you, so
+      every screen reads calm, fast, and intentional.
+    </p>
+
+    <div class="actions reveal" style="--d: 350ms">
+      <button class="btn btn-primary" type="button" id="cta" data-state="idle">
+        <span class="label">Start building</span>
+        <svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 8h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M8.5 4.5L12 8l-3.5 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg class="spinner" width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="6.5" stroke="hsl(40 30% 98% / 0.28)" stroke-width="2"/>
+          <path d="M8.5 2a6.5 6.5 0 0 1 6.5 6.5" stroke="hsl(40 30% 98%)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="check" width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
+          <path d="M3.8 8.8l3 3 6.4-6.6" stroke="hsl(40 30% 98%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <button class="btn btn-secondary" type="button" id="watch">
+        <svg class="play" width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+          <path d="M3.5 2.6a.9.9 0 0 1 1.36-.77l6.1 3.64a.9.9 0 0 1 0 1.54l-6.1 3.64A.9.9 0 0 1 3.5 9.9V2.6z"/>
+        </svg>
+        Watch demo
+      </button>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // ---- Primary CTA: optimistic submit with flicker-guarded states ----
+      var cta = document.getElementById("cta");
+      var label = cta.querySelector(".label");
+      var DEFAULT_LABEL = label.textContent;
+      var MIN_VISIBLE = 480;   // keep the spinner up long enough to not flicker
+      var busy = false;
+      var timers = [];
+
+      function clearTimers() {
+        timers.forEach(clearTimeout);
+        timers = [];
+      }
+
+      cta.addEventListener("click", function () {
+        if (busy) return;
+        busy = true;
+        clearTimers();
+
+        // optimistic: respond instantly, don't wait on a "network"
+        cta.setAttribute("data-state", "loading");
+        cta.setAttribute("aria-busy", "true");
+
+        var started = Date.now();
+        // simulate a request resolving at a variable time
+        var work = 380 + Math.random() * 360;
+
+        timers.push(setTimeout(function () {
+          var elapsed = Date.now() - started;
+          var wait = Math.max(0, MIN_VISIBLE - elapsed); // flicker guard
+
+          timers.push(setTimeout(function () {
+            cta.setAttribute("data-state", "done");
+            cta.removeAttribute("aria-busy");
+            label.textContent = "You're in";
+
+            // settle back to idle so the demo can be re-run
+            timers.push(setTimeout(function () {
+              cta.setAttribute("data-state", "idle");
+              label.textContent = DEFAULT_LABEL;
+              busy = false;
+            }, 1500));
+          }, wait));
+        }, work));
+      });
+
+      // ---- Secondary: trigger-local feedback, no cross-screen toast ----
+      var watch = document.getElementById("watch");
+      watch.addEventListener("click", function () {
+        // brief acknowledging press is handled by :active; nothing noisy here.
+      });
+    })();
+  </script>
+</body>
+</html>

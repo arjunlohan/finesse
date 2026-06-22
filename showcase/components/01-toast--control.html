@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toast notifications</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --toast-bg: hsl(0 0% 100%);
+    --ink: hsl(220 18% 16%);
+    --ink-soft: hsl(220 10% 42%);
+    --ink-faint: hsl(220 8% 60%);
+    --hairline: hsl(220 14% 91%);
+    --ring: hsl(220 90% 56%);
+
+    --accent-success: hsl(152 58% 42%);
+    --accent-success-bg: hsl(152 56% 95%);
+    --accent-info: hsl(214 84% 56%);
+    --accent-info-bg: hsl(214 90% 96%);
+    --accent-warn: hsl(36 92% 50%);
+    --accent-warn-bg: hsl(40 92% 95%);
+    --accent-error: hsl(0 72% 56%);
+    --accent-error-bg: hsl(0 78% 97%);
+
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+  }
+
+  body {
+    background: var(--surface);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .stage {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 28px;
+    overflow: hidden;
+  }
+
+  /* subtle backdrop texture so the surface reads intentional */
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(120% 90% at 50% -10%, hsl(40 20% 99%) 0%, transparent 60%),
+      radial-gradient(80% 60% at 100% 110%, hsl(220 24% 97%) 0%, transparent 55%);
+    pointer-events: none;
+  }
+
+  .panel {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .panel h1 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    color: var(--ink);
+  }
+
+  .panel p {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    margin: 0 0 22px;
+  }
+
+  .trigger {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    color: hsl(0 0% 100%);
+    background: var(--ink);
+    padding: 11px 20px 11px 17px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    box-shadow:
+      0 1px 2px hsl(220 30% 12% / 0.16),
+      0 2px 8px hsl(220 30% 12% / 0.12),
+      inset 0 1px 0 hsl(0 0% 100% / 0.08);
+    transition: transform 0.18s var(--ease-spring),
+                box-shadow 0.2s var(--ease-out),
+                background 0.2s var(--ease-out);
+  }
+
+  .trigger:hover {
+    background: hsl(220 18% 22%);
+    box-shadow:
+      0 1px 2px hsl(220 30% 12% / 0.2),
+      0 4px 14px hsl(220 30% 12% / 0.18),
+      inset 0 1px 0 hsl(0 0% 100% / 0.1);
+  }
+
+  .trigger:active {
+    transform: scale(0.965);
+    box-shadow:
+      0 1px 2px hsl(220 30% 12% / 0.18),
+      inset 0 1px 0 hsl(0 0% 100% / 0.06);
+  }
+
+  .trigger:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px var(--surface),
+      0 0 0 5.5px hsl(220 90% 56% / 0.55);
+  }
+
+  .trigger .bell {
+    width: 17px;
+    height: 17px;
+    transition: transform 0.4s var(--ease-spring);
+  }
+  .trigger:hover .bell { transform: rotate(-12deg); }
+  .trigger:active .bell { transform: rotate(8deg) scale(0.92); }
+
+  .hint {
+    margin-top: 16px;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    letter-spacing: 0.01em;
+    min-height: 16px;
+    transition: opacity 0.3s var(--ease-out);
+  }
+
+  /* ---- toast region ---- */
+  .toast-region {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    width: 312px;
+    max-width: calc(100vw - 32px);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .toast {
+    position: relative;
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    column-gap: 11px;
+    align-items: start;
+    background: var(--toast-bg);
+    border: 0.5px solid var(--hairline);
+    border-radius: 13px;
+    padding: 12px 12px 13px 13px;
+    box-shadow:
+      0 1px 2px hsl(220 30% 14% / 0.05),
+      0 6px 16px hsl(220 30% 14% / 0.09),
+      0 14px 34px hsl(220 30% 14% / 0.08);
+    overflow: hidden;
+    transform-origin: top center;
+    will-change: transform, opacity;
+
+    animation: toast-in 0.52s var(--ease-spring) both;
+  }
+
+  .toast.is-leaving {
+    animation: toast-out 0.34s var(--ease-in) forwards;
+  }
+
+  @keyframes toast-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-14px) scale(0.94);
+    }
+    60% { opacity: 1; }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes toast-out {
+    0% {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(115%) scale(0.96);
+    }
+  }
+
+  /* collapse height smoothly when removed from flow */
+  .toast.is-leaving {
+    /* handled via JS height animation wrapper below */
+  }
+
+  .toast .icon {
+    grid-row: 1 / 2;
+    grid-column: 1;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .toast .icon svg { width: 17px; height: 17px; }
+
+  .toast[data-type="success"] .icon { background: var(--accent-success-bg); color: var(--accent-success); }
+  .toast[data-type="info"]    .icon { background: var(--accent-info-bg);    color: var(--accent-info); }
+  .toast[data-type="warn"]    .icon { background: var(--accent-warn-bg);    color: var(--accent-warn); }
+  .toast[data-type="error"]   .icon { background: var(--accent-error-bg);   color: var(--accent-error); }
+
+  .toast .body {
+    grid-row: 1 / 2;
+    grid-column: 2;
+    min-width: 0;
+    padding-top: 1px;
+  }
+
+  .toast .title {
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+    line-height: 1.3;
+    margin: 0 0 2px;
+  }
+
+  .toast .message {
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .toast .close {
+    grid-row: 1 / 2;
+    grid-column: 3;
+    appearance: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    margin: -2px -2px 0 0;
+    border-radius: 7px;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
+  }
+  .toast .close:hover { background: hsl(220 14% 94%); color: var(--ink); }
+  .toast .close:active { background: hsl(220 14% 90%); }
+  .toast .close:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--toast-bg), 0 0 0 3.5px hsl(220 90% 56% / 0.5);
+  }
+  .toast .close svg { width: 13px; height: 13px; }
+
+  /* progress timer track spans the full bottom */
+  .toast .progress {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    height: 2.5px;
+    margin: 11px -12px -13px -13px;
+    background: hsl(220 14% 94%);
+    overflow: hidden;
+  }
+  .toast .progress::after {
+    content: "";
+    display: block;
+    height: 100%;
+    width: 100%;
+    transform-origin: left center;
+    transform: scaleX(var(--p, 1));
+  }
+  .toast[data-type="success"] .progress::after { background: var(--accent-success); }
+  .toast[data-type="info"]    .progress::after { background: var(--accent-info); }
+  .toast[data-type="warn"]    .progress::after { background: var(--accent-warn); }
+  .toast[data-type="error"]   .progress::after { background: var(--accent-error); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toast { animation-duration: 0.001s; }
+    .toast.is-leaving { animation-duration: 0.001s; }
+    .trigger .bell { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="panel">
+      <h1>Notifications</h1>
+      <p>Trigger a toast to see it slide into the stack. They dismiss themselves, or close one early.</p>
+      <button class="trigger" id="trigger" type="button" aria-describedby="hint">
+        <svg class="bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10.27 21a1.94 1.94 0 0 0 3.46 0"/>
+          <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>
+        </svg>
+        Show notification
+      </button>
+      <div class="hint" id="hint">Tip: click rapidly to stack several</div>
+    </div>
+  </div>
+
+  <div class="toast-region" id="region" role="region" aria-label="Notifications" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var region = document.getElementById("region");
+  var trigger = document.getElementById("trigger");
+  var hint = document.getElementById("hint");
+
+  var DURATION = 4200;
+  var MAX_VISIBLE = 4;
+
+  var ICONS = {
+    success: '<path d="M20 6 9 17l-5-5"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    warn: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    error: '<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>'
+  };
+
+  var MESSAGES = [
+    { type: "success", title: "Changes saved",        message: "Your document is up to date." },
+    { type: "info",    title: "New comment",          message: "Maya mentioned you on “Q3 roadmap”." },
+    { type: "info",    title: "Sync complete",        message: "12 files synced to the cloud." },
+    { type: "warn",    title: "Storage almost full",  message: "You’ve used 92% of your plan." },
+    { type: "success", title: "Invite accepted",      message: "Jordan joined your workspace." },
+    { type: "error",   title: "Upload failed",        message: "Connection timed out — retry?" },
+    { type: "info",    title: "Deploy queued",        message: "Build #482 is on its way." },
+    { type: "success", title: "Payment received",     message: "$48.00 from Atlas Studio." },
+    { type: "warn",    title: "Password expiring",    message: "Update it within 3 days." }
+  ];
+
+  var seq = 0;
+  var msgIndex = 0;
+
+  var prefersReduced = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function nextMessage() {
+    var m = MESSAGES[msgIndex % MESSAGES.length];
+    msgIndex++;
+    return m;
+  }
+
+  function buildToast(data) {
+    var el = document.createElement("div");
+    el.className = "toast";
+    el.setAttribute("data-type", data.type);
+    el.setAttribute("role", data.type === "error" || data.type === "warn" ? "alert" : "status");
+
+    var iconLabel = {
+      success: "Success", info: "Information", warn: "Warning", error: "Error"
+    }[data.type];
+
+    el.innerHTML =
+      '<div class="icon" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' +
+          ICONS[data.type] +
+        '</svg>' +
+      '</div>' +
+      '<div class="body">' +
+        '<span class="sr-only"></span>' +
+        '<p class="title"></p>' +
+        '<p class="message"></p>' +
+      '</div>' +
+      '<button class="close" type="button" aria-label="Dismiss notification">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' +
+      '</button>' +
+      '<div class="progress" aria-hidden="true"></div>';
+
+    el.querySelector(".sr-only").textContent = iconLabel + ": ";
+    el.querySelector(".title").textContent = data.title;
+    el.querySelector(".message").textContent = data.message;
+
+    return el;
+  }
+
+  function startTimer(state) {
+    if (prefersReduced) return;
+    state.startedAt = performance.now();
+    state.remaining = DURATION;
+    tickFrame(state);
+  }
+
+  function tickFrame(state) {
+    if (state.paused || state.removed) return;
+    var now = performance.now();
+    var elapsed = now - state.startedAt;
+    var left = state.remaining - elapsed;
+    var ratio = Math.max(0, left / DURATION);
+    state.el.style.setProperty("--p", ratio.toFixed(4));
+
+    if (left <= 0) {
+      remove(state, "timeout");
+      return;
+    }
+    state.raf = requestAnimationFrame(function () { tickFrame(state); });
+  }
+
+  function pause(state) {
+    if (state.paused || state.removed || prefersReduced) return;
+    state.paused = true;
+    if (state.raf) cancelAnimationFrame(state.raf);
+    var now = performance.now();
+    state.remaining = state.remaining - (now - state.startedAt);
+  }
+
+  function resume(state) {
+    if (!state.paused || state.removed || prefersReduced) return;
+    state.paused = false;
+    state.startedAt = performance.now();
+    tickFrame(state);
+  }
+
+  var toasts = [];
+
+  function add(data) {
+    var el = buildToast(data);
+
+    var state = {
+      id: ++seq,
+      el: el,
+      data: data,
+      paused: false,
+      removed: false,
+      raf: null,
+      remaining: DURATION,
+      startedAt: 0,
+      fallback: null
+    };
+
+    el.addEventListener("mouseenter", function () { pause(state); });
+    el.addEventListener("mouseleave", function () { resume(state); });
+    el.addEventListener("focusin", function () { pause(state); });
+    el.addEventListener("focusout", function () {
+      if (!el.contains(document.activeElement)) resume(state);
+    });
+
+    el.querySelector(".close").addEventListener("click", function () {
+      remove(state, "manual");
+    });
+
+    region.appendChild(el);
+    toasts.push(state);
+
+    if (prefersReduced) {
+      el.style.setProperty("--p", "0");
+      state.fallback = setTimeout(function () { remove(state, "timeout"); }, DURATION);
+    } else {
+      requestAnimationFrame(function () { startTimer(state); });
+    }
+
+    enforceLimit();
+    return state;
+  }
+
+  function enforceLimit() {
+    var live = toasts.filter(function (t) { return !t.removed; });
+    while (live.length > MAX_VISIBLE) {
+      var oldest = live.shift();
+      remove(oldest, "overflow");
+    }
+  }
+
+  function remove(state, reason) {
+    if (state.removed) return;
+    state.removed = true;
+    if (state.raf) cancelAnimationFrame(state.raf);
+    if (state.fallback) clearTimeout(state.fallback);
+
+    var el = state.el;
+
+    if (prefersReduced) {
+      el.remove();
+      prune(state);
+      return;
+    }
+
+    // Freeze current height, then collapse it so siblings glide up.
+    var h = el.offsetHeight;
+    el.style.height = h + "px";
+    el.classList.add("is-leaving");
+
+    // force reflow so the height value is committed before transition
+    void el.offsetHeight;
+
+    el.style.transition = "height 0.34s var(--ease-in), padding 0.34s var(--ease-in), margin 0.34s var(--ease-in)";
+    el.style.height = "0px";
+    el.style.paddingTop = "0px";
+    el.style.paddingBottom = "0px";
+    el.style.marginTop = "-10px"; // counteract the flex gap as it collapses
+
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      el.removeEventListener("animationend", onAnim);
+      if (el.parentNode) el.remove();
+      prune(state);
+    }
+    function onAnim(e) {
+      if (e.target === el && e.animationName === "toast-out") {
+        // wait for height collapse to also settle
+      }
+    }
+    el.addEventListener("animationend", onAnim);
+    setTimeout(finish, 380);
+  }
+
+  function prune(state) {
+    var i = toasts.indexOf(state);
+    if (i !== -1) toasts.splice(i, 1);
+  }
+
+  // ---- trigger wiring ----
+  var clickBurst = 0;
+  var burstReset = null;
+
+  trigger.addEventListener("click", function () {
+    add(nextMessage());
+
+    clickBurst++;
+    if (burstReset) clearTimeout(burstReset);
+    if (clickBurst >= 3) {
+      hint.textContent = "Whoa — older toasts retire to keep the stack tidy";
+    } else {
+      hint.textContent = "Hover a toast to pause its timer";
+    }
+    burstReset = setTimeout(function () {
+      clickBurst = 0;
+      hint.textContent = "Tip: click rapidly to stack several";
+    }, 2600);
+  });
+
+  // Seed one toast shortly after load so the component reads alive.
+  window.addEventListener("load", function () {
+    setTimeout(function () { add(nextMessage()); }, 480);
+  });
+})();
+</script>
+</body>
+</html>

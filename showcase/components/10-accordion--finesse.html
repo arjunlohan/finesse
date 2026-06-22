@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FAQ</title>
+<style>
+  :root {
+    /* ---- Motion tokens (the shared contract) ---- */
+    --duration-fast:   150ms;
+    --duration-base:   200ms;
+    --duration-slow:   300ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1);  /* enter / decelerate */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15);  /* exit / accelerate */
+
+    /* ---- Surface ---- */
+    --surface:        hsl(40 12% 98%);
+    --card:           hsl(40 20% 99.5%);
+    --card-hover:     hsl(40 24% 97.5%);
+
+    /* ---- Ink (three text colors, near-black never #000) ---- */
+    --ink-primary:    hsl(40 8% 14%);
+    --ink-secondary:  hsl(40 6% 38%);
+    --ink-tertiary:   hsl(40 5% 56%);
+
+    /* ---- Lines & accents ---- */
+    --hairline:       hsl(40 10% 90%);
+    --hairline-soft:  hsl(40 10% 93%);
+    --accent:         hsl(28 84% 52%);
+    --focus-ring:     hsl(28 84% 52%);
+
+    /* ---- Radius (concentric: card 16, inner 12 = 16 - 4 padding) ---- */
+    --radius-card:    16px;
+    --radius-inner:   12px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 40px 24px;
+    background-color: var(--surface);
+    /* faint warm vignette so the surface reads intentional, not flat */
+    background-image:
+      radial-gradient(120% 90% at 50% -10%, hsl(40 30% 99%) 0%, transparent 55%);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .faq {
+    width: 100%;
+    max-width: 416px;
+  }
+
+  .faq__head {
+    margin: 0 0 22px;
+    padding: 0 4px;
+  }
+  .faq__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .faq__eyebrow::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px hsl(28 84% 52% / 0.15);
+  }
+  .faq__title {
+    margin: 0;
+    font-size: 25px;
+    line-height: 1.18;
+    font-weight: 650;
+    letter-spacing: -0.018em;
+    color: var(--ink-primary);
+    text-wrap: balance;
+  }
+  .faq__sub {
+    margin: 7px 0 0;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--ink-secondary);
+    text-wrap: pretty;
+  }
+
+  /* ---- The accordion card ---- */
+  .acc {
+    list-style: none;
+    margin: 0;
+    padding: 4px;                       /* the padding that makes radii concentric */
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-card);
+    /* layered, hue-tinted shadows — light from above, never pure black */
+    box-shadow:
+      0 1px 2px hsl(40 20% 30% / 0.05),
+      0 4px 12px hsl(40 20% 30% / 0.05),
+      0 14px 34px hsl(40 20% 30% / 0.05);
+  }
+
+  .acc__item {
+    position: relative;
+    border-radius: var(--radius-inner);
+  }
+  /* hairline divider between items — a real border, not a shadow */
+  .acc__item + .acc__item::before {
+    content: "";
+    position: absolute;
+    top: -0.5px;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: var(--hairline-soft);
+    /* fade the divider out as either neighbour opens, so open rows feel like cards */
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+  .acc__item.is-open::before,
+  .acc__item.is-open + .acc__item::before {
+    opacity: 0;
+  }
+
+  /* ---- Trigger (real <button>, full-width hit area well over 44px) ---- */
+  .acc__trigger {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    border-radius: var(--radius-inner);
+    /* icon side gets ~2px less padding than the text side (optical) */
+    padding: 17px 16px 17px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+    font: inherit;
+    color: var(--ink-primary);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .acc__q {
+    flex: 1;
+    min-width: 0;
+    font-size: 16px;                    /* >=16px, no iOS zoom */
+    line-height: 1.4;
+    font-weight: 550;
+    letter-spacing: -0.006em;
+    color: var(--ink-primary);
+    text-wrap: pretty;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+  .acc__item.is-open .acc__q { color: var(--ink-primary); }
+
+  /* ---- Chevron in a soft circular chip ---- */
+  .acc__chev {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    color: var(--ink-tertiary);
+    background: transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+  .acc__chev svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+    transition: transform var(--duration-slow) var(--ease-standard);
+    transform: rotate(0deg);
+  }
+  .acc__item.is-open .acc__chev {
+    color: var(--accent);
+    background: hsl(28 84% 52% / 0.1);
+  }
+  .acc__item.is-open .acc__chev svg {
+    transform: rotate(180deg);
+  }
+
+  /* Hover — gated so it never sticks on touch */
+  @media (hover: hover) {
+    .acc__trigger:hover { background: var(--card-hover); }
+    .acc__trigger:hover .acc__chev { color: var(--ink-secondary); }
+    .acc__item.is-open .acc__trigger:hover .acc__chev { color: var(--accent); }
+  }
+
+  /* Press — subtle physical give, never below 0.95 */
+  .acc__trigger:active {
+    transform: scale(0.985);
+    background: var(--card-hover);
+  }
+
+  /* Focus — visible ring via box-shadow (respects radius), keyboard-only */
+  .acc__trigger:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--card),
+      0 0 0 4px var(--focus-ring);
+  }
+
+  /* ---- Answer panel: grid-rows 0fr -> 1fr (interruptible, retargets mid-flight) ---- */
+  .acc__panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--duration-slow) var(--ease-standard);
+  }
+  .acc__item.is-open .acc__panel {
+    grid-template-rows: 1fr;
+  }
+  .acc__panelInner {
+    overflow: hidden;
+    min-height: 0;
+  }
+  .acc__answer {
+    margin: 0;
+    /* align answer text to the question (18px left), clear the chevron on the right */
+    padding: 0 18px 18px;
+    font-size: 14.5px;
+    line-height: 1.62;
+    color: var(--ink-secondary);
+    text-wrap: pretty;
+    /* fade + lift the body so content arrives, not just unmasks */
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+      opacity var(--duration-base) var(--ease-in),
+      transform var(--duration-base) var(--ease-in);
+  }
+  .acc__item.is-open .acc__answer {
+    opacity: 1;
+    transform: translateY(0);
+    /* enter is decelerated and slightly delayed so it follows the height open */
+    transition:
+      opacity var(--duration-slow) var(--ease-out) 60ms,
+      transform var(--duration-slow) var(--ease-out) 60ms;
+  }
+  .acc__answer a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid hsl(28 84% 52% / 0.35);
+    transition: border-color var(--duration-fast) var(--ease-standard);
+  }
+  @media (hover: hover) {
+    .acc__answer a:hover { border-bottom-color: var(--accent); }
+  }
+  .acc__answer a:focus-visible {
+    outline: none;
+    border-radius: 3px;
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus-ring);
+  }
+
+  .faq__foot {
+    margin: 18px 4px 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-tertiary);
+    text-align: center;
+  }
+
+  /* ---- Reduced motion: substitute fades / instant, never speed-jab a translate ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .acc__chev svg { transition: transform var(--duration-fast) var(--ease-standard); }
+    .acc__panel {
+      transition: grid-template-rows var(--duration-fast) var(--ease-standard);
+    }
+    .acc__answer,
+    .acc__item.is-open .acc__answer {
+      transform: none;
+      transition: opacity var(--duration-fast) linear;
+    }
+    .acc__trigger:active { transform: none; }
+  }
+
+  /* ---- Forced colors: keep boundaries & focus visible ---- */
+  @media (forced-colors: active) {
+    .acc { border-color: CanvasText; }
+    .acc__trigger:focus-visible { outline: 2px solid Highlight; box-shadow: none; }
+    .acc__item.is-open .acc__chev { background: transparent; }
+  }
+</style>
+</head>
+<body>
+  <main class="faq">
+    <header class="faq__head">
+      <p class="faq__eyebrow">Support</p>
+      <h1 class="faq__title">Frequently asked questions</h1>
+      <p class="faq__sub">Everything you need to know about the plan, billing, and getting set up.</p>
+    </header>
+
+    <ul class="acc" id="acc">
+      <li class="acc__item">
+        <h2 style="margin:0">
+          <button class="acc__trigger" type="button" aria-expanded="false" id="t1" aria-controls="p1">
+            <span class="acc__q">What's included in the free plan?</span>
+            <span class="acc__chev" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </button>
+        </h2>
+        <div class="acc__panel" id="p1" role="region" aria-labelledby="t1">
+          <div class="acc__panelInner">
+            <p class="acc__answer">The free plan covers up to three projects, unlimited personal drafts, and 1&nbsp;GB of storage. You can invite collaborators at any time and upgrade in a single click when you outgrow it — no card required to start.</p>
+          </div>
+        </div>
+      </li>
+
+      <li class="acc__item">
+        <h2 style="margin:0">
+          <button class="acc__trigger" type="button" aria-expanded="false" id="t2" aria-controls="p2">
+            <span class="acc__q">Can I change my plan later?</span>
+            <span class="acc__chev" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </button>
+        </h2>
+        <div class="acc__panel" id="p2" role="region" aria-labelledby="t2">
+          <div class="acc__panelInner">
+            <p class="acc__answer">Absolutely. Upgrades take effect immediately and we prorate the difference, so you only pay for what's left in the cycle. Downgrades apply at your next renewal, and nothing is ever deleted in the meantime.</p>
+          </div>
+        </div>
+      </li>
+
+      <li class="acc__item">
+        <h2 style="margin:0">
+          <button class="acc__trigger" type="button" aria-expanded="false" id="t3" aria-controls="p3">
+            <span class="acc__q">How does billing work?</span>
+            <span class="acc__chev" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </button>
+        </h2>
+        <div class="acc__panel" id="p3" role="region" aria-labelledby="t3">
+          <div class="acc__panelInner">
+            <p class="acc__answer">We bill monthly or annually, whichever you prefer — annual saves you two months. Every charge comes with an itemized receipt, and you can review your full history or export invoices from the <a href="#" onclick="return false">billing dashboard</a>.</p>
+          </div>
+        </div>
+      </li>
+
+      <li class="acc__item">
+        <h2 style="margin:0">
+          <button class="acc__trigger" type="button" aria-expanded="false" id="t4" aria-controls="p4">
+            <span class="acc__q">Is my data secure?</span>
+            <span class="acc__chev" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </button>
+        </h2>
+        <div class="acc__panel" id="p4" role="region" aria-labelledby="t4">
+          <div class="acc__panelInner">
+            <p class="acc__answer">Yes. Everything is encrypted in transit and at rest with AES-256, backed up daily across regions, and never shared with third parties. We're SOC&nbsp;2 Type&nbsp;II certified and undergo independent audits every year.</p>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <p class="faq__foot">Still have a question? We usually reply within a few hours.</p>
+  </main>
+
+  <script>
+    (function () {
+      var triggers = document.querySelectorAll('.acc__trigger');
+
+      triggers.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var item = btn.closest('.acc__item');
+          var open = item.classList.toggle('is-open');
+          // Optimistic, trigger-local, instant — no network, no wait.
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      });
+
+      // Arrow-key roving between headers — keyboard users move fast, stay instant.
+      var list = Array.prototype.slice.call(triggers);
+      document.getElementById('acc').addEventListener('keydown', function (e) {
+        var idx = list.indexOf(document.activeElement);
+        if (idx === -1) return;
+        var next = null;
+        if (e.key === 'ArrowDown') next = list[(idx + 1) % list.length];
+        else if (e.key === 'ArrowUp') next = list[(idx - 1 + list.length) % list.length];
+        else if (e.key === 'Home') next = list[0];
+        else if (e.key === 'End') next = list[list.length - 1];
+        if (next) { e.preventDefault(); next.focus(); }
+      });
+    })();
+  </script>
+</body>
+</html>

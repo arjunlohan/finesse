@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pricing card</title>
+<style>
+  :root {
+    --page-bg: hsl(40 12% 97%);
+    --surface: #ffffff;
+    --ink: hsl(220 18% 14%);
+    --ink-soft: hsl(220 9% 42%);
+    --ink-faint: hsl(220 8% 56%);
+    --hairline: hsl(220 14% 92%);
+    --hairline-soft: hsl(220 16% 95%);
+    --accent: hsl(245 58% 56%);
+    --accent-strong: hsl(245 62% 50%);
+    --accent-deep: hsl(247 60% 42%);
+    --accent-tint: hsl(245 70% 97%);
+    --check-bg: hsl(245 64% 96%);
+    --radius-card: 24px;
+    --radius-btn: 13px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--page-bg);
+    background-image:
+      radial-gradient(120% 120% at 50% -10%, hsl(245 60% 99%) 0%, rgba(255,255,255,0) 55%),
+      radial-gradient(100% 80% at 100% 110%, hsl(40 40% 96%) 0%, rgba(255,255,255,0) 60%);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 32px 20px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .card {
+    position: relative;
+    width: 100%;
+    max-width: 348px;
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    padding: 32px 30px 30px;
+    border: 1px solid var(--hairline);
+    box-shadow:
+      0 1px 1px rgba(31, 34, 54, 0.04),
+      0 4px 10px -4px rgba(31, 34, 54, 0.07),
+      0 18px 38px -16px rgba(31, 34, 54, 0.12);
+    transition:
+      transform 0.5s var(--ease),
+      box-shadow 0.5s var(--ease),
+      border-color 0.5s var(--ease);
+    will-change: transform;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(160deg, hsl(245 70% 90% / 0.9), rgba(255,255,255,0) 40%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.5s var(--ease);
+    pointer-events: none;
+  }
+
+  .card:hover {
+    transform: translateY(-6px);
+    border-color: hsl(245 40% 88%);
+    box-shadow:
+      0 1px 1px rgba(31, 34, 54, 0.04),
+      0 8px 18px -6px rgba(31, 34, 54, 0.10),
+      0 30px 60px -20px rgba(60, 52, 160, 0.22);
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .plan {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+  }
+
+  .plan-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-tint);
+  }
+
+  .badge {
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--accent-deep);
+    background: var(--accent-tint);
+    border: 1px solid hsl(245 60% 92%);
+    padding: 5px 11px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .currency {
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1;
+    transform: translateY(-13px);
+  }
+
+  .amount {
+    font-size: 62px;
+    font-weight: 600;
+    line-height: 0.9;
+    letter-spacing: -0.035em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .period {
+    font-size: 15.5px;
+    font-weight: 500;
+    color: var(--ink-faint);
+    letter-spacing: -0.01em;
+  }
+
+  .desc {
+    margin: 16px 0 0;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    letter-spacing: -0.005em;
+  }
+
+  .rule {
+    height: 1px;
+    margin: 24px 0 22px;
+    background: linear-gradient(90deg, transparent, var(--hairline) 12%, var(--hairline) 88%, transparent);
+    border: 0;
+  }
+
+  .features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14.5px;
+    font-weight: 450;
+    color: hsl(220 14% 26%);
+    letter-spacing: -0.005em;
+  }
+
+  .check {
+    flex: 0 0 auto;
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: var(--check-bg);
+    display: grid;
+    place-items: center;
+    transition: background 0.45s var(--ease), transform 0.45s var(--ease);
+  }
+
+  .check svg {
+    width: 12px;
+    height: 12px;
+    stroke: var(--accent-strong);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+  }
+
+  .check svg path {
+    stroke-dasharray: 16;
+    stroke-dashoffset: 0;
+  }
+
+  .card:hover .check {
+    background: hsl(245 64% 93%);
+  }
+
+  .cta {
+    position: relative;
+    width: 100%;
+    margin-top: 26px;
+    border: 0;
+    border-radius: var(--radius-btn);
+    padding: 15px 20px;
+    font-family: inherit;
+    font-size: 15.5px;
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    color: #fff;
+    background: var(--accent-strong);
+    cursor: pointer;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    box-shadow:
+      inset 0 1px 0 hsl(245 80% 72% / 0.5),
+      0 1px 2px rgba(40, 36, 110, 0.18),
+      0 8px 18px -8px rgba(60, 52, 160, 0.55);
+    transition:
+      transform 0.28s var(--ease),
+      box-shadow 0.35s var(--ease),
+      background-color 0.35s var(--ease-soft);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .cta::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, hsl(245 64% 60%), hsl(247 60% 46%));
+    opacity: 1;
+    transition: opacity 0.35s var(--ease-soft);
+  }
+
+  .cta::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -120%;
+    width: 70%;
+    height: 100%;
+    background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.28) 50%, rgba(255,255,255,0) 100%);
+    transform: skewX(-18deg);
+    pointer-events: none;
+  }
+
+  .cta-label, .cta-arrow {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .cta-arrow svg {
+    width: 16px;
+    height: 16px;
+    stroke: #fff;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    transition: transform 0.32s var(--ease);
+  }
+
+  .cta:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 hsl(245 80% 74% / 0.6),
+      0 2px 4px rgba(40, 36, 110, 0.20),
+      0 14px 28px -10px rgba(60, 52, 160, 0.62);
+  }
+
+  .cta:hover::before { opacity: 0; }
+  .cta:hover { background: hsl(247 62% 48%); }
+  .cta:hover .cta-arrow svg { transform: translateX(3px); }
+
+  .cta:hover::after {
+    animation: sheen 0.85s var(--ease-soft) forwards;
+  }
+
+  @keyframes sheen {
+    to { left: 150%; }
+  }
+
+  .cta:active {
+    transform: translateY(0) scale(0.985);
+    box-shadow:
+      inset 0 2px 5px rgba(30, 24, 90, 0.35),
+      0 1px 2px rgba(40, 36, 110, 0.2);
+  }
+
+  .cta:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px var(--page-bg),
+      0 0 0 5.5px hsl(245 70% 64%),
+      0 10px 22px -10px rgba(60, 52, 160, 0.5);
+  }
+
+  .note {
+    margin: 16px 0 0;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    letter-spacing: -0.003em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="card" aria-label="Pro plan pricing">
+    <header class="head">
+      <span class="plan"><span class="plan-dot" aria-hidden="true"></span>Pro</span>
+      <span class="badge">Most popular</span>
+    </header>
+
+    <div class="price-row">
+      <span class="currency">$</span>
+      <span class="amount">24</span>
+      <span class="period">/month</span>
+    </div>
+
+    <p class="desc">Everything a growing team needs to ship faster and stay in sync.</p>
+
+    <hr class="rule" />
+
+    <ul class="features">
+      <li class="feature">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg></span>
+        Unlimited projects &amp; boards
+      </li>
+      <li class="feature">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg></span>
+        Advanced analytics dashboard
+      </li>
+      <li class="feature">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg></span>
+        Priority support, 24/7
+      </li>
+      <li class="feature">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg></span>
+        Single sign-on (SSO)
+      </li>
+    </ul>
+
+    <button class="cta" type="button">
+      <span class="cta-label">Get started</span>
+      <span class="cta-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" /></svg></span>
+    </button>
+
+    <p class="note">14-day free trial &middot; no card required</p>
+  </main>
+
+  <script>
+    const card = document.querySelector('.card');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!reduce) {
+      const checks = card.querySelectorAll('.check');
+      let pending = null;
+      card.addEventListener('mouseenter', () => {
+        if (pending) clearTimeout(pending);
+        checks.forEach((c, i) => {
+          c.style.transitionDelay = (i * 55) + 'ms';
+          c.style.transform = 'scale(1.12)';
+        });
+        pending = setTimeout(() => {
+          checks.forEach((c) => {
+            c.style.transitionDelay = '0ms';
+            c.style.transform = 'scale(1)';
+          });
+        }, 260);
+      });
+    }
+
+    const btn = card.querySelector('.cta');
+    btn.addEventListener('click', () => {
+      if (reduce) return;
+      btn.animate(
+        [
+          { transform: 'translateY(0) scale(0.97)' },
+          { transform: 'translateY(-2px) scale(1)' }
+        ],
+        { duration: 260, easing: 'cubic-bezier(0.22,1,0.36,1)' }
+      );
+    });
+  </script>
+</body>
+</html>

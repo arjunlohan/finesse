@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Modal dialog</title>
+<style>
+  :root {
+    /* ---- Motion tokens (shared contract) ---- */
+    --duration-fast:   150ms;  /* press, color, hover */
+    --duration-base:   200ms;  /* exit (one tier under enter) */
+    --duration-slow:   300ms;  /* modal enter — larger surface */
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* small in-place change */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* ENTER / decelerate */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* EXIT / accelerate */
+
+    /* ---- Surface palette: near-white base, saturated warm neutrals ---- */
+    --surface-page:    hsl(40 12% 98%);
+    --surface-raised:  hsl(40 20% 99.5%);
+    --surface-sunken:  hsl(40 14% 96%);
+
+    /* ---- Text: three tiers, near-black not #000 ---- */
+    --text-primary:    hsl(36 14% 12%);
+    --text-secondary:  hsl(36 8% 38%);
+    --text-tertiary:   hsl(36 6% 52%);
+    --text-on-accent:  hsl(40 30% 99%);
+
+    /* ---- Borders & lines ---- */
+    --border-subtle:   hsl(38 12% 88%);
+    --border-strong:   hsl(38 10% 80%);
+
+    /* ---- Accent (deep, AA-contrast) & danger ---- */
+    --accent:          hsl(244 62% 56%);
+    --accent-hover:    hsl(244 64% 51%);
+    --accent-press:    hsl(244 66% 46%);
+    --danger:          hsl(2 72% 50%);
+
+    /* ---- Focus ring ---- */
+    --ring:            hsl(244 80% 62%);
+
+    /* ---- Concentric radius math ----
+       Dialog outer radius 20px. Body padding 24px would over-round nested
+       items, so the action buttons sit on an inner radius of 11px and the
+       dialog inner content frame keeps optical harmony. */
+    --radius-dialog:   20px;
+    --radius-control:  11px;   /* 20 - ~9 effective inset to the button row */
+    --radius-icon:     9px;    /* close button: smaller control */
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 48px 24px;
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ============================================================
+     TRIGGER BUTTON
+     ============================================================ */
+  .demo {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    text-align: center;
+  }
+  .demo__hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.01em;
+  }
+  .demo__hint kbd {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+
+  /* Shared button base */
+  .btn {
+    --_bg: var(--surface-raised);
+    --_fg: var(--text-primary);
+    appearance: none;
+    border: 1px solid var(--border-strong);
+    background: var(--_bg);
+    color: var(--_fg);
+    font: inherit;
+    font-weight: 560;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: var(--radius-control);
+    padding: 11px 18px;
+    min-height: 42px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+    isolation: isolate;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color     var(--duration-fast) var(--ease-standard),
+      box-shadow       var(--duration-fast) var(--ease-standard),
+      color            var(--duration-fast) var(--ease-standard),
+      transform        var(--duration-fast) var(--ease-standard);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover { background-color: var(--surface-sunken); border-color: var(--border-strong); }
+  }
+  .btn:active { transform: scale(0.96); }
+
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface-page), 0 0 0 4px var(--ring);
+  }
+
+  /* Trigger: primary, accent-filled */
+  .btn--trigger {
+    --_bg: var(--accent);
+    --_fg: var(--text-on-accent);
+    border-color: transparent;
+    padding: 12px 20px;
+    min-height: 46px;
+    box-shadow:
+      0 1px 1px hsl(244 40% 30% / 0.10),
+      0 2px 6px hsl(244 40% 30% / 0.14),
+      inset 0 1px 0 hsl(0 0% 100% / 0.16);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn--trigger:hover { background-color: var(--accent-hover); }
+  }
+  .btn--trigger:active { background-color: var(--accent-press); }
+
+  /* ============================================================
+     OVERLAY  (backdrop + scrim)
+     ============================================================ */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    /* hidden by default — toggled via [data-state] */
+    visibility: hidden;
+  }
+  .overlay[data-state="open"],
+  .overlay[data-state="closing"] { visibility: visible; }
+
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    background: hsl(36 22% 14% / 0.42);
+    -webkit-backdrop-filter: blur(2px) saturate(105%);
+    backdrop-filter: blur(2px) saturate(105%);
+    opacity: 0;
+    transition: opacity var(--duration-slow) var(--ease-out);
+  }
+  .overlay[data-state="open"] .backdrop { opacity: 1; }
+  .overlay[data-state="closing"] .backdrop {
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-in);  /* exit: faster */
+  }
+
+  /* ============================================================
+     DIALOG
+     ============================================================ */
+  .dialog {
+    position: relative;
+    width: min(100%, 416px);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-dialog);
+    /* Layered, hue-tinted elevation — light from above */
+    box-shadow:
+      0 1px 1px hsl(36 30% 10% / 0.05),
+      0 4px 8px hsl(36 30% 10% / 0.07),
+      0 16px 32px hsl(36 30% 10% / 0.13),
+      0 30px 60px hsl(36 30% 10% / 0.10);
+    /* Enter target state */
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    transform-origin: center;
+    transition:
+      opacity   var(--duration-slow) var(--ease-out),
+      transform var(--duration-slow) var(--ease-out);
+  }
+  .overlay[data-state="open"] .dialog {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .overlay[data-state="closing"] .dialog {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);   /* small fixed drift — not far */
+    transition:
+      opacity   var(--duration-base) var(--ease-in),
+      transform var(--duration-base) var(--ease-in);
+  }
+
+  .dialog__body {
+    padding: 26px 26px 22px;
+  }
+
+  /* Close (x) — icon-only, generous hit area via padding */
+  .dialog__close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    border-radius: var(--radius-icon);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color            var(--duration-fast) var(--ease-standard),
+      transform        var(--duration-fast) var(--ease-standard);
+  }
+  .dialog__close::after {  /* extend hit area to ~44px without shifting layout */
+    content: "";
+    position: absolute;
+    inset: -5px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .dialog__close:hover { background-color: var(--surface-sunken); color: var(--text-primary); }
+  }
+  .dialog__close:active { transform: scale(0.92); }
+  .dialog__close:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 4px var(--ring);
+  }
+  .dialog__close svg { width: 17px; height: 17px; display: block; }
+
+  /* Decorative warning icon disc */
+  .dialog__badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;   /* inner radius harmonised with dialog */
+    display: grid;
+    place-items: center;
+    margin-bottom: 16px;
+    color: var(--danger);
+    background: hsl(2 72% 50% / 0.10);
+    box-shadow: inset 0 0 0 1px hsl(2 72% 50% / 0.16);
+  }
+  .dialog__badge svg { width: 21px; height: 21px; display: block; }
+
+  .dialog__title {
+    margin: 0 0 8px;
+    font-size: 19px;
+    font-weight: 640;
+    letter-spacing: -0.012em;
+    line-height: 1.25;
+    color: var(--text-primary);
+    text-wrap: balance;
+    /* room so title never runs under the close button */
+    padding-right: 28px;
+  }
+  .dialog__text {
+    margin: 0;
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    text-wrap: pretty;
+    max-width: 40ch;
+  }
+  .dialog__text b {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* Footer / action row — divider is a real border, not a shadow */
+  .dialog__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 26px 22px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .btn--ghost {
+    --_bg: var(--surface-raised);
+    --_fg: var(--text-secondary);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn--ghost:hover { background-color: var(--surface-sunken); color: var(--text-primary); }
+  }
+
+  .btn--danger {
+    --_bg: var(--danger);
+    --_fg: hsl(40 30% 99%);
+    border-color: transparent;
+    box-shadow:
+      0 1px 1px hsl(2 60% 30% / 0.12),
+      0 2px 5px hsl(2 60% 30% / 0.16),
+      inset 0 1px 0 hsl(0 0% 100% / 0.14);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn--danger:hover { background-color: hsl(2 74% 46%); }
+  }
+  .btn--danger:active { background-color: hsl(2 76% 42%); }
+  .btn--danger:focus-visible {
+    box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 4px hsl(2 80% 60%);
+  }
+
+  /* Disabled / busy */
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
+  .btn:disabled { transform: none; }
+
+  /* Confirm button label / spinner swap (cross-fade, both mounted) */
+  .btn__swap {
+    display: inline-grid;
+    place-items: center;
+  }
+  .btn__swap > * {
+    grid-area: 1 / 1;
+    transition:
+      opacity   var(--duration-base) var(--ease-standard),
+      transform var(--duration-base) var(--ease-standard);
+  }
+  .btn__label { display: inline-flex; align-items: center; }
+  .btn__spinner {
+    opacity: 0;
+    transform: scale(0.8);
+    pointer-events: none;
+    width: 16px; height: 16px;
+  }
+  .btn[data-busy="true"] .btn__label   { opacity: 0; transform: scale(0.9); }
+  .btn[data-busy="true"] .btn__spinner { opacity: 1; transform: scale(1); }
+
+  .spinner {
+    width: 16px; height: 16px;
+    display: block;
+    color: currentColor;
+  }
+  .spinner circle {
+    opacity: 0.28;
+  }
+  .spinner path {
+    transform-origin: center;
+    animation: spin 0.7s linear infinite;   /* continuous loop → linear is correct */
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Success check that replaces the row after confirm resolves */
+  .dialog__done {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 560;
+    color: hsl(150 55% 32%);
+  }
+  .dialog__done svg { width: 18px; height: 18px; }
+
+  /* Visually-hidden live region */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ============================================================
+     REDUCED MOTION — substitute, don't delete
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    .backdrop,
+    .overlay[data-state="closing"] .backdrop {
+      transition: opacity var(--duration-fast) linear;
+    }
+    .dialog,
+    .overlay[data-state="open"] .dialog,
+    .overlay[data-state="closing"] .dialog {
+      transform: none;
+      transition: opacity var(--duration-fast) linear;
+    }
+    .btn { transition: background-color var(--duration-fast) linear, color var(--duration-fast) linear; }
+    .btn:active { transform: none; }
+    .dialog__close:active { transform: none; }
+    .btn__swap > * { transition: opacity var(--duration-fast) linear; }
+    .spinner path { animation-duration: 0.9s; }  /* keep determinate-feel but calmer */
+  }
+
+  /* ============================================================
+     FORCED COLORS — keep boundaries paintable
+     ============================================================ */
+  @media (forced-colors: active) {
+    .dialog { border-color: CanvasText; }
+    .btn { border: 1px solid CanvasText; }
+    .btn:focus-visible,
+    .dialog__close:focus-visible { outline: 2px solid Highlight; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="demo">
+    <button class="btn btn--trigger" id="openBtn" type="button" aria-haspopup="dialog">
+      Delete project
+    </button>
+    <p class="demo__hint">Opens a dialog · close with <kbd>Esc</kbd>, backdrop, or Cancel</p>
+  </div>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay" data-state="closed">
+    <div class="backdrop" id="backdrop"></div>
+
+    <div
+      class="dialog"
+      role="alertdialog"
+      id="dialog"
+      aria-modal="true"
+      aria-labelledby="dialogTitle"
+      aria-describedby="dialogText"
+    >
+      <button class="dialog__close" id="closeBtn" type="button" aria-label="Close dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+             stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+
+      <div class="dialog__body">
+        <div class="dialog__badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" />
+            <path d="M12 9v4" />
+            <path d="M12 17h.01" />
+          </svg>
+        </div>
+
+        <h2 class="dialog__title" id="dialogTitle">Delete this project?</h2>
+        <p class="dialog__text" id="dialogText">
+          This permanently removes <b>Northwind Redesign</b> and all of its files,
+          deploys, and history. This action can’t be undone.
+        </p>
+      </div>
+
+      <div class="dialog__footer">
+        <span class="dialog__done" id="doneState" role="status" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          Project deleted
+        </span>
+        <button class="btn btn--ghost" id="cancelBtn" type="button">Cancel</button>
+        <button class="btn btn--danger" id="confirmBtn" type="button" data-busy="false">
+          <span class="btn__swap">
+            <span class="btn__label">Delete</span>
+            <span class="btn__spinner" aria-hidden="true">
+              <svg class="spinner" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.4" />
+                <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+              </svg>
+            </span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status announcements for AT -->
+  <div class="sr-only" aria-live="polite" id="live"></div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    var overlay   = document.getElementById("overlay");
+    var dialog    = document.getElementById("dialog");
+    var openBtn   = document.getElementById("openBtn");
+    var closeBtn  = document.getElementById("closeBtn");
+    var cancelBtn = document.getElementById("cancelBtn");
+    var confirmBtn= document.getElementById("confirmBtn");
+    var backdrop  = document.getElementById("backdrop");
+    var footer    = confirmBtn.parentElement;
+    var doneState = document.getElementById("doneState");
+    var live      = document.getElementById("live");
+
+    var EXIT_MS = 200;        // must match --duration-base exit
+    var isOpen  = false;
+    var closingTimer = null;
+    var lastFocused = null;
+    var confirmInFlight = false;
+
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    function focusables() {
+      return Array.prototype.slice.call(
+        dialog.querySelectorAll(
+          'button:not([disabled]):not([aria-hidden="true"]), [href], input, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(function (el) {
+        return el.offsetParent !== null || el === document.activeElement;
+      });
+    }
+
+    /* ---- Open ---- */
+    function open() {
+      if (isOpen) return;
+      if (closingTimer) { clearTimeout(closingTimer); closingTimer = null; }
+      isOpen = true;
+      lastFocused = document.activeElement;
+
+      resetConfirmState();
+
+      overlay.setAttribute("data-state", "open");
+      document.documentElement.style.overflow = "hidden";
+
+      // Move focus into the dialog. Default to the safe (Cancel) action.
+      // Defer one frame so the element is laid out / not display:none.
+      requestAnimationFrame(function () {
+        cancelBtn.focus();
+      });
+
+      document.addEventListener("keydown", onKeydown, true);
+    }
+
+    /* ---- Close (with exit animation) ---- */
+    function close() {
+      if (!isOpen) return;
+      isOpen = false;
+      overlay.setAttribute("data-state", "closing");
+      document.removeEventListener("keydown", onKeydown, true);
+
+      var delay = reduceMotion.matches ? 150 : EXIT_MS;
+      closingTimer = setTimeout(function () {
+        overlay.setAttribute("data-state", "closed");
+        document.documentElement.style.overflow = "";
+        closingTimer = null;
+        // Restore focus to the trigger — never strand the keyboard user.
+        if (lastFocused && typeof lastFocused.focus === "function") {
+          lastFocused.focus();
+        }
+      }, delay);
+    }
+
+    /* ---- Keyboard: Esc to close, Tab trap ---- */
+    function onKeydown(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (!confirmInFlight) close();
+        return;
+      }
+      if (e.key === "Tab") {
+        var items = focusables();
+        if (!items.length) return;
+        var first = items[0];
+        var last  = items[items.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && (active === first || !dialog.contains(active))) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    /* ---- Backdrop click closes (pointer must start AND end on backdrop) ---- */
+    var pointerDownOnBackdrop = false;
+    backdrop.addEventListener("pointerdown", function (e) {
+      pointerDownOnBackdrop = (e.target === backdrop);
+    });
+    overlay.addEventListener("pointerup", function (e) {
+      if (pointerDownOnBackdrop && e.target === backdrop && !confirmInFlight) {
+        close();
+      }
+      pointerDownOnBackdrop = false;
+    });
+
+    /* ---- Confirm: optimistic-feeling async with flicker-guarded spinner ---- */
+    function resetConfirmState() {
+      confirmInFlight = false;
+      confirmBtn.dataset.busy = "false";
+      confirmBtn.disabled = false;
+      cancelBtn.disabled = false;
+      closeBtn.disabled = false;
+      confirmBtn.style.display = "";
+      cancelBtn.style.display = "";
+      doneState.style.display = "none";
+      doneState.setAttribute("aria-hidden", "true");
+    }
+
+    function runConfirm() {
+      if (confirmInFlight) return;
+      confirmInFlight = true;
+
+      // Disable to block duplicate submits; show busy state on the trigger itself.
+      confirmBtn.dataset.busy = "true";
+      confirmBtn.disabled = true;
+      cancelBtn.disabled = true;
+      closeBtn.disabled = true;
+      live.textContent = "Deleting project…";
+
+      // Simulated request. Real code would await the network here.
+      var MIN_VISIBLE = reduceMotion.matches ? 250 : 620;
+      window.setTimeout(function () {
+        // Success — trigger-local confirmation, not a far-flung toast.
+        confirmBtn.style.display = "none";
+        cancelBtn.style.display = "none";
+        doneState.style.display = "inline-flex";
+        doneState.setAttribute("aria-hidden", "false");
+        live.textContent = "Project deleted.";
+
+        // Let the confirmation register, then dismiss.
+        window.setTimeout(function () {
+          confirmInFlight = false;   // allow close to proceed
+          close();
+        }, 760);
+      }, MIN_VISIBLE);
+    }
+
+    /* ---- Wiring ---- */
+    // Open on mousedown for that "already there" feel; keep click for keyboard/touch parity.
+    openBtn.addEventListener("mousedown", function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      open();
+    });
+    openBtn.addEventListener("click", function (e) {
+      // mousedown already handled the pointer path; this catches keyboard activation.
+      if (e.detail === 0) open();   // detail 0 = keyboard-activated
+    });
+
+    closeBtn.addEventListener("click", function () { if (!confirmInFlight) close(); });
+    cancelBtn.addEventListener("click", function () { if (!confirmInFlight) close(); });
+    confirmBtn.addEventListener("click", runConfirm);
+
+    // Safety: if the tab is hidden mid-close, settle state cleanly.
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden && closingTimer) {
+        clearTimeout(closingTimer);
+        overlay.setAttribute("data-state", "closed");
+        document.documentElement.style.overflow = "";
+        closingTimer = null;
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

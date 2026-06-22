@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Segmented tabs</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --card: hsl(0 0% 100%);
+    --ink: hsl(220 18% 14%);
+    --ink-soft: hsl(220 10% 38%);
+    --ink-faint: hsl(220 8% 56%);
+    --line: hsl(220 14% 92%);
+    --line-soft: hsl(220 14% 95%);
+    --track: hsl(40 10% 94%);
+    --thumb: hsl(0 0% 100%);
+    --accent: hsl(244 64% 58%);
+    --accent-soft: hsl(244 70% 96%);
+    --shadow-sm: 0 1px 2px hsl(220 30% 12% / 0.05);
+    --shadow-thumb: 0 1px 1px hsl(220 30% 12% / 0.04), 0 2px 6px hsl(220 30% 12% / 0.08), 0 0 0 0.5px hsl(220 20% 12% / 0.04);
+    --shadow-card: 0 1px 2px hsl(220 30% 12% / 0.04), 0 6px 22px -10px hsl(220 30% 12% / 0.16);
+    --ease: cubic-bezier(0.34, 1.32, 0.44, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+  }
+
+  body {
+    background:
+      radial-gradient(120% 80% at 50% -10%, hsl(244 50% 97%) 0%, transparent 60%),
+      var(--surface);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 28px;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 392px;
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: var(--shadow-card);
+    padding: 22px 22px 24px;
+  }
+
+  /* ---------- tablist ---------- */
+  .tabs {
+    position: relative;
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    background: var(--track);
+    border-radius: 13px;
+    box-shadow: inset 0 0 0 1px hsl(220 14% 90% / 0.7);
+  }
+
+  .thumb {
+    position: absolute;
+    top: 4px;
+    left: 0;
+    height: calc(100% - 8px);
+    border-radius: 9px;
+    background: var(--thumb);
+    box-shadow: var(--shadow-thumb);
+    transform: translateX(var(--x, 0px));
+    width: var(--w, 0px);
+    transition:
+      transform 0.46s var(--ease),
+      width 0.46s var(--ease);
+    z-index: 0;
+    will-change: transform, width;
+  }
+
+  .tab {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 6px;
+    border: 0;
+    background: transparent;
+    border-radius: 9px;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--ink-faint);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.32s var(--ease-soft);
+    outline: none;
+  }
+
+  .tab .ico {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    transition: transform 0.4s var(--ease);
+  }
+  .tab .label { transition: transform 0.4s var(--ease); }
+
+  .tab:hover { color: var(--ink-soft); }
+
+  .tab[aria-selected="true"] {
+    color: var(--accent);
+  }
+  .tab[aria-selected="true"] .ico {
+    transform: scale(1.06);
+  }
+
+  .tab:focus-visible {
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px hsl(244 64% 58% / 0.55);
+  }
+
+  .tab .count {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 2px 5px;
+    border-radius: 20px;
+    background: hsl(220 12% 92%);
+    color: var(--ink-faint);
+    transition: background 0.3s var(--ease-soft), color 0.3s var(--ease-soft);
+  }
+  .tab[aria-selected="true"] .count {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  /* ---------- panels ---------- */
+  .views {
+    position: relative;
+    margin-top: 20px;
+  }
+
+  .view {
+    display: none;
+    animation: rise 0.44s var(--ease-soft) both;
+  }
+  .view.is-active { display: block; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(7px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .view-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .view-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .view-head .meta {
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border-radius: 11px;
+    border: 1px solid var(--line-soft);
+    background: var(--card);
+    transition: border-color 0.2s var(--ease-soft), background 0.2s var(--ease-soft);
+  }
+  .row + .row { margin-top: 8px; }
+  .row:hover {
+    border-color: var(--line);
+    background: hsl(40 14% 99%);
+  }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: hsl(0 0% 100%);
+    letter-spacing: 0.02em;
+  }
+  .avatar.a { background: hsl(244 56% 60%); }
+  .avatar.b { background: hsl(168 52% 42%); }
+  .avatar.c { background: hsl(22 78% 56%); }
+  .avatar.d { background: hsl(330 56% 56%); }
+  .avatar.e { background: hsl(202 70% 48%); }
+
+  .row .grow { flex: 1 1 auto; min-width: 0; }
+  .row .name {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .row .sub {
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-top: 1px;
+  }
+
+  .pill {
+    flex: none;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.01em;
+  }
+  .pill.ok   { background: hsl(150 52% 94%); color: hsl(150 50% 30%); }
+  .pill.wait { background: hsl(40 80% 93%);  color: hsl(35 70% 38%); }
+  .pill.off  { background: hsl(220 14% 94%); color: var(--ink-faint); }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat {
+    padding: 13px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--line-soft);
+    background: hsl(40 14% 99%);
+  }
+  .stat .k {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .stat .v {
+    margin-top: 5px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .d {
+    font-size: 11.5px;
+    font-weight: 600;
+    margin-top: 3px;
+  }
+  .stat .d.up   { color: hsl(150 50% 36%); }
+  .stat .d.down { color: hsl(2 62% 50%); }
+
+  .bars {
+    margin-top: 10px;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 64px;
+    padding: 12px 14px 0;
+    border-radius: 12px;
+    border: 1px solid var(--line-soft);
+    background: hsl(40 14% 99%);
+  }
+  .bars span {
+    flex: 1;
+    border-radius: 4px 4px 2px 2px;
+    background: linear-gradient(to top, hsl(244 64% 64%), hsl(244 72% 72%));
+    transform-origin: bottom;
+    animation: grow 0.55s var(--ease) both;
+  }
+  @keyframes grow { from { transform: scaleY(0.04); } to { transform: scaleY(1); } }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field + .field { margin-top: 14px; }
+  .field label {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+  .field .control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 11px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .field .control .val { color: var(--ink); font-weight: 500; }
+
+  .switch {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    border-radius: 20px;
+    background: hsl(220 12% 86%);
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.28s var(--ease-soft);
+    flex: none;
+  }
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: hsl(0 0% 100%);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.3s var(--ease);
+  }
+  .switch[aria-checked="true"] { background: var(--accent); }
+  .switch[aria-checked="true"]::after { transform: translateX(16px); }
+  .switch:focus-visible { outline: 2px solid hsl(244 64% 58% / 0.6); outline-offset: 2px; }
+
+  .hint {
+    margin: 16px 2px 0;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    text-align: center;
+    letter-spacing: 0.01em;
+  }
+  .hint kbd {
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 1.5px 5px;
+    border-radius: 5px;
+    background: hsl(220 14% 95%);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <div class="panel">
+      <div class="tabs" role="tablist" aria-label="Workspace sections">
+        <span class="thumb" aria-hidden="true"></span>
+
+        <button class="tab" role="tab" id="tab-team" aria-controls="panel-team" aria-selected="true" tabindex="0">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="label">Team</span>
+        </button>
+
+        <button class="tab" role="tab" id="tab-activity" aria-controls="panel-activity" aria-selected="false" tabindex="-1">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span class="label">Activity</span>
+        </button>
+
+        <button class="tab" role="tab" id="tab-billing" aria-controls="panel-billing" aria-selected="false" tabindex="-1">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          <span class="label">Billing</span>
+        </button>
+
+        <button class="tab" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" tabindex="-1">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="label">Settings</span>
+        </button>
+      </div>
+
+      <div class="views">
+        <!-- Team -->
+        <section class="view is-active" role="tabpanel" id="panel-team" aria-labelledby="tab-team" tabindex="0">
+          <div class="view-head">
+            <h3>Members</h3>
+            <span class="meta">5 active</span>
+          </div>
+          <div class="row">
+            <div class="avatar a">EM</div>
+            <div class="grow"><div class="name">Elena Marsh</div><div class="sub">Owner · Design</div></div>
+            <span class="pill ok">Online</span>
+          </div>
+          <div class="row">
+            <div class="avatar b">RK</div>
+            <div class="grow"><div class="name">Ravi Kapoor</div><div class="sub">Admin · Engineering</div></div>
+            <span class="pill ok">Online</span>
+          </div>
+          <div class="row">
+            <div class="avatar c">TN</div>
+            <div class="grow"><div class="name">Tomas Neff</div><div class="sub">Member · Product</div></div>
+            <span class="pill wait">Away</span>
+          </div>
+          <div class="row">
+            <div class="avatar d">JA</div>
+            <div class="grow"><div class="name">Julia Adler</div><div class="sub">Member · Support</div></div>
+            <span class="pill off">Offline</span>
+          </div>
+        </section>
+
+        <!-- Activity -->
+        <section class="view" role="tabpanel" id="panel-activity" aria-labelledby="tab-activity" tabindex="0" hidden>
+          <div class="view-head">
+            <h3>This week</h3>
+            <span class="meta">Jun 15 – 21</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat"><div class="k">Deploys</div><div class="v">34</div><div class="d up">▲ 12% vs last</div></div>
+            <div class="stat"><div class="k">Open PRs</div><div class="v">7</div><div class="d down">▼ 3 merged</div></div>
+          </div>
+          <div class="bars" aria-hidden="true">
+            <span style="height:42%"></span>
+            <span style="height:66%"></span>
+            <span style="height:54%"></span>
+            <span style="height:88%"></span>
+            <span style="height:72%"></span>
+            <span style="height:96%"></span>
+            <span style="height:60%"></span>
+          </div>
+        </section>
+
+        <!-- Billing -->
+        <section class="view" role="tabpanel" id="panel-billing" aria-labelledby="tab-billing" tabindex="0" hidden>
+          <div class="view-head">
+            <h3>Plan</h3>
+            <span class="meta">Renews Jul 1</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat"><div class="k">Current plan</div><div class="v" style="font-size:18px;">Scale</div><div class="d up">$240 / mo</div></div>
+            <div class="stat"><div class="k">Seats used</div><div class="v">9<span style="font-size:14px;color:var(--ink-faint);font-weight:500;"> / 12</span></div><div class="d" style="color:var(--ink-faint);">3 available</div></div>
+          </div>
+          <div class="row" style="margin-top:10px;">
+            <div class="avatar e" style="border-radius:9px;">VI</div>
+            <div class="grow"><div class="name">Visa ending 4421</div><div class="sub">Expires 08 / 27</div></div>
+            <span class="pill ok">Default</span>
+          </div>
+        </section>
+
+        <!-- Settings -->
+        <section class="view" role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" tabindex="0" hidden>
+          <div class="view-head">
+            <h3>Preferences</h3>
+            <span class="meta">Workspace</span>
+          </div>
+          <div class="field">
+            <label>Notifications</label>
+            <div class="control">
+              <span>Email me on new activity</span>
+              <button class="switch" role="switch" aria-checked="true" aria-label="Email notifications"></button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Two-factor auth</label>
+            <div class="control">
+              <span>Require for all members</span>
+              <button class="switch" role="switch" aria-checked="false" aria-label="Two-factor authentication"></button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Default role</label>
+            <div class="control">
+              <span>New members join as</span>
+              <span class="val">Member ▾</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <p class="hint">Use <kbd>←</kbd> <kbd>→</kbd> to switch · <kbd>Home</kbd> <kbd>End</kbd> to jump</p>
+  </main>
+
+<script>
+(function () {
+  var tablist = document.querySelector('[role="tablist"]');
+  var thumb = tablist.querySelector('.thumb');
+  var tabs = Array.prototype.slice.call(tablist.querySelectorAll('[role="tab"]'));
+  var panels = tabs.map(function (t) {
+    return document.getElementById(t.getAttribute('aria-controls'));
+  });
+
+  function moveThumb(tab) {
+    thumb.style.setProperty('--x', tab.offsetLeft + 'px');
+    thumb.style.setProperty('--w', tab.offsetWidth + 'px');
+  }
+
+  function select(index, focus) {
+    tabs.forEach(function (tab, i) {
+      var on = i === index;
+      tab.setAttribute('aria-selected', on ? 'true' : 'false');
+      tab.tabIndex = on ? 0 : -1;
+      var panel = panels[i];
+      if (on) {
+        panel.hidden = false;
+        panel.classList.remove('is-active');
+        void panel.offsetWidth;
+        panel.classList.add('is-active');
+      } else {
+        panel.hidden = true;
+        panel.classList.remove('is-active');
+      }
+    });
+    moveThumb(tabs[index]);
+    if (focus) tabs[index].focus();
+  }
+
+  tabs.forEach(function (tab, i) {
+    tab.addEventListener('click', function () { select(i, false); });
+  });
+
+  tablist.addEventListener('keydown', function (e) {
+    var current = tabs.findIndex(function (t) {
+      return t.getAttribute('aria-selected') === 'true';
+    });
+    var next = null;
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        next = (current + 1) % tabs.length; break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        next = (current - 1 + tabs.length) % tabs.length; break;
+      case 'Home': next = 0; break;
+      case 'End': next = tabs.length - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    select(next, true);
+  });
+
+  // Toggle switches in Settings
+  document.querySelectorAll('.switch').forEach(function (sw) {
+    sw.addEventListener('click', function () {
+      sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+    });
+  });
+
+  function init() { moveThumb(tabs[0]); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  window.addEventListener('resize', function () {
+    var current = tabs.findIndex(function (t) {
+      return t.getAttribute('aria-selected') === 'true';
+    });
+    moveThumb(tabs[current === -1 ? 0 : current]);
+  });
+})();
+</script>
+</body>
+</html>

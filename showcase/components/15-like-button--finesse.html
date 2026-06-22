@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Like</title>
+<style>
+  /* ----------------------------------------------------------------
+     Motion tokens — one shared scale, referenced everywhere.
+     ---------------------------------------------------------------- */
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast:   150ms;  /* micro: press, color, tint            */
+    --duration-base:   200ms;  /* toggles, small reveals               */
+    --duration-slow:   300ms;  /* icon cross-fades, larger surfaces    */
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* small in-place */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* enter          */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* exit           */
+    --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1); /* gentle pop   */
+
+    /* Surface — clean near-white, saturated-neutral text (never #000) */
+    --surface:       hsl(40 12% 98%);
+    --card:          hsl(0 0% 100%);
+    --ink-1:         hsl(220 18% 16%);   /* primary text   */
+    --ink-2:         hsl(220 10% 40%);   /* secondary      */
+    --ink-3:         hsl(220 8% 56%);    /* tertiary / icon rest */
+    --hairline:      hsl(220 16% 92%);
+
+    --like:          hsl(347 84% 56%);   /* heart red      */
+    --like-deep:     hsl(347 72% 47%);   /* count when liked */
+    --like-soft:     hsl(347 90% 96%);   /* hover wash     */
+    --ring:          hsl(221 83% 60%);   /* focus ring     */
+
+    --radius-card:   20px;
+    --radius-btn:    12px;   /* concentric: 20 outer − 8 padding = 12 */
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    display: grid;
+    place-items: center;
+    padding: 40px 24px;
+    background: var(--surface);
+    color: var(--ink-1);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---- The post card --------------------------------------------- */
+  .card {
+    width: 100%;
+    max-width: 384px;
+    background: var(--card);
+    border: 1px solid transparent;        /* painted in forced-colors */
+    border-radius: var(--radius-card);
+    padding: 8px;
+    /* layered, hue-tinted shadow — light from above, never pure black */
+    box-shadow:
+      0 1px 2px hsl(220 30% 20% / 0.05),
+      0 6px 16px hsl(220 30% 20% / 0.06),
+      0 1px 0 hsl(0 0% 100% / 0.6) inset;
+  }
+
+  .post {
+    padding: 16px 16px 6px;
+  }
+  .post__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 999px;
+    flex: none;
+    background:
+      radial-gradient(120% 120% at 30% 20%, hsl(347 90% 72%), hsl(280 70% 60%) 55%, hsl(221 80% 58%));
+    box-shadow: 0 1px 2px hsl(220 30% 20% / 0.12);
+  }
+  .post__meta { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+  .post__name { font-size: 14px; font-weight: 600; color: var(--ink-1); letter-spacing: -0.01em; }
+  .post__sub  { font-size: 12.5px; color: var(--ink-3); }
+  .post__body {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+
+  .divider { height: 1px; background: var(--hairline); margin: 14px 8px 0; }
+
+  /* ---- Action bar ------------------------------------------------ */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .actions .spacer { flex: 1; }
+
+  /* Shared pill button */
+  .action {
+    -webkit-tap-highlight-color: transparent;
+    appearance: none;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 11px 0 10px;       /* icon side 10 < text side 11: optical */
+    border-radius: 999px;
+    color: var(--ink-2);
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 550;
+    line-height: 1;
+    position: relative;
+    transition:
+      color           var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard),
+      transform       var(--duration-fast) var(--ease-standard);
+  }
+  /* Generous hit area without overlapping neighbours */
+  .action::after {
+    content: "";
+    position: absolute;
+    inset: -3px -2px;
+  }
+  .action:focus { outline: none; }
+  .action:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  }
+  .action:active { transform: scale(0.96); }
+
+  @media (hover: hover) and (pointer: fine) {
+    .action:hover { background-color: hsl(220 16% 95%); color: var(--ink-1); }
+    .like:hover   { background-color: var(--like-soft); color: var(--like-deep); }
+    .like:hover .heart__outline { stroke: var(--like); }
+  }
+
+  .action__icon {
+    width: 22px; height: 22px;
+    flex: none;
+    display: block;
+    overflow: visible;            /* let the burst escape the box */
+  }
+
+  /* ---- Like button specifics ------------------------------------- */
+  .like { padding-left: 8px; }    /* tighter on the heart side */
+
+  .heart {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 22px; height: 22px;
+  }
+  .heart > svg { grid-area: 1 / 1; }
+
+  /* Two stacked hearts: outline (rest) + fill (liked), cross-faded. */
+  .heart__outline path { stroke: currentColor; stroke-width: 1.9; fill: none;
+    transition: stroke var(--duration-fast) var(--ease-standard); }
+  .heart__fill   path { fill: var(--like); }
+
+  .heart__fill {
+    opacity: 0;
+    transform: scale(0.4);
+    transform-origin: center 58%;   /* heart's visual centre of mass */
+    transition:
+      opacity   var(--duration-fast) var(--ease-standard),
+      transform var(--duration-base) var(--ease-spring);
+  }
+  .heart__outline {
+    opacity: 1;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  /* Liked: fill blooms in, outline fades out — both interruptible. */
+  .like.is-liked .heart__fill    { opacity: 1; transform: scale(1); }
+  .like.is-liked .heart__outline { opacity: 0; }
+  .like.is-liked { color: var(--like-deep); }
+
+  /* A single satisfying pop on every like (cheap, not annoying). */
+  .like.is-liked .heart { animation: heart-pop var(--duration-base) var(--ease-spring); }
+  @keyframes heart-pop {
+    0%   { transform: scale(1); }
+    38%  { transform: scale(0.86); }
+    72%  { transform: scale(1.14); }
+    100% { transform: scale(1); }
+  }
+
+  /* ---- Count roll (tabular, vertical slide) ---------------------- */
+  .count {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ink-2);
+    height: 16px;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+  .like.is-liked .count { color: var(--like-deep); }
+  .count__track {
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--duration-base) var(--ease-out);
+    will-change: transform;
+  }
+  .count__cell { height: 16px; display: flex; align-items: center; }
+
+  /* ---- Spark burst — one-shot keyframes, fire & forget ----------- */
+  .burst {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 0; height: 0;
+    pointer-events: none;
+  }
+  .spark {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: var(--w, 4px); height: var(--h, 4px);
+    border-radius: 999px;
+    background: var(--c, var(--like));
+    opacity: 0;
+    transform: translate(-50%, -50%);
+  }
+  .ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 18px; height: 18px;
+    margin: -9px 0 0 -9px;
+    border-radius: 999px;
+    border: 2px solid var(--like);
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  .is-bursting .ring { animation: ring-out 520ms var(--ease-out) forwards; }
+  @keyframes ring-out {
+    0%   { opacity: 0.55; transform: scale(0.3); }
+    60%  { opacity: 0.18; }
+    100% { opacity: 0;    transform: scale(2.6); }
+  }
+  .is-bursting .spark {
+    animation: spark-fly 560ms var(--ease-out) forwards;
+    animation-delay: var(--d, 0ms);
+  }
+  @keyframes spark-fly {
+    0%   { opacity: 0;   transform: translate(-50%, -50%) rotate(var(--a)) translateX(2px)  scale(0.4); }
+    22%  { opacity: 1; }
+    100% { opacity: 0;   transform: translate(-50%, -50%) rotate(var(--a)) translateX(var(--r, 18px)) scale(0.7); }
+  }
+
+  /* ---- Live region (visually hidden) ----------------------------- */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  /* ---- Reduced motion: substitute, don't delete ------------------ */
+  @media (prefers-reduced-motion: reduce) {
+    .action,
+    .heart__fill, .heart__outline, .heart__outline path,
+    .count, .count__track {
+      transition-duration: var(--duration-fast);
+      transition-timing-function: var(--ease-standard);
+    }
+    .heart__fill { transition: opacity var(--duration-fast) var(--ease-standard); }
+    .like.is-liked .heart__fill { transform: scale(1); }   /* no spring grow */
+    .like.is-liked .heart { animation: none; }             /* no pop          */
+    .count__track { transition: none; }                    /* instant value   */
+    .action:active { transform: none; }
+    .is-bursting .spark,
+    .is-bursting .ring { animation: none !important; opacity: 0 !important; }
+  }
+
+  @media (forced-colors: active) {
+    .card { border-color: CanvasText; }
+    .action:focus-visible { outline: 2px solid Highlight; box-shadow: none; }
+    .heart__fill path { fill: Highlight; }
+  }
+</style>
+</head>
+<body>
+  <article class="card">
+    <div class="post">
+      <header class="post__head">
+        <div class="avatar" aria-hidden="true"></div>
+        <div class="post__meta">
+          <span class="post__name">Maya Okonkwo</span>
+          <span class="post__sub">2h · Lisbon</span>
+        </div>
+      </header>
+      <p class="post__body">
+        Spent the morning watching the fog lift off the river. Some mornings just
+        ask you to sit still for a while.
+      </p>
+    </div>
+
+    <div class="divider" role="presentation"></div>
+
+    <div class="actions">
+      <!-- LIKE -------------------------------------------------------- -->
+      <button
+        type="button"
+        class="like action"
+        id="likeBtn"
+        aria-pressed="false"
+        aria-label="Like. 1,283 likes"
+      >
+        <span class="heart" aria-hidden="true">
+          <!-- rest: outline -->
+          <svg class="action__icon heart__outline" viewBox="0 0 24 24" fill="none">
+            <path d="M12 20.4 4.3 12.9C2.5 11.1 2.5 8.2 4.3 6.4c1.7-1.7 4.5-1.8 6.3-.2l1.4 1.3 1.4-1.3c1.8-1.6 4.6-1.5 6.3.2 1.8 1.8 1.8 4.7 0 6.5L12 20.4Z"/>
+          </svg>
+          <!-- liked: solid fill -->
+          <svg class="action__icon heart__fill" viewBox="0 0 24 24">
+            <path d="M12 20.4 4.3 12.9C2.5 11.1 2.5 8.2 4.3 6.4c1.7-1.7 4.5-1.8 6.3-.2l1.4 1.3 1.4-1.3c1.8-1.6 4.6-1.5 6.3.2 1.8 1.8 1.8 4.7 0 6.5L12 20.4Z"/>
+          </svg>
+          <!-- celebration layer (built once, replayed on first like) -->
+          <span class="burst" id="burst" aria-hidden="true"></span>
+        </span>
+        <span class="count" id="count" aria-hidden="true"></span>
+      </button>
+
+      <!-- COMMENT ----------------------------------------------------- -->
+      <button type="button" class="action comment" aria-label="Comment. 47 comments">
+        <svg class="action__icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5c-1.3 0-2.5-.3-3.6-.8L4 21l1.3-3.4A8.1 8.1 0 0 1 4 12.5 8.38 8.38 0 0 1 12.5 4 8.38 8.38 0 0 1 21 11.5Z"/>
+        </svg>
+        <span>47</span>
+      </button>
+
+      <!-- SHARE ------------------------------------------------------- -->
+      <button type="button" class="action share" aria-label="Share">
+        <svg class="action__icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/>
+          <path d="M16 6l-4-4-4 4"/>
+          <path d="M12 2v13"/>
+        </svg>
+      </button>
+
+      <span class="spacer"></span>
+    </div>
+  </article>
+
+  <div class="sr-only" aria-live="polite" aria-atomic="true" id="status"></div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const btn    = document.getElementById("likeBtn");
+    const heart  = btn.querySelector(".heart");
+    const burst  = document.getElementById("burst");
+    const countEl = document.getElementById("count");
+    const status = document.getElementById("status");
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const BASE = 1283;          // count at rest, unliked
+    let liked = false;
+    let celebrated = false;     // first like gets the full burst; later likes don't
+    let rolling = false;        // re-entrancy guard for the count animation
+
+    const fmt = (n) => n.toLocaleString("en-US");
+
+    // ---- Build the spark burst once -------------------------------
+    // A short, asymmetric scatter — confetti reads as deliberate, not a
+    // mechanical starburst. Fires only on the very first like.
+    (function buildBurst() {
+      const sparks = [
+        { a: -82,  r: 17, w: 5, h: 5, c: "var(--like)",            d: 0 },
+        { a: -38,  r: 20, w: 4, h: 4, c: "hsl(347 90% 66%)",       d: 18 },
+        { a:   6,  r: 16, w: 6, h: 6, c: "hsl(28 92% 60%)",        d: 8 },
+        { a:  48,  r: 21, w: 4, h: 4, c: "var(--like)",            d: 22 },
+        { a:  96,  r: 15, w: 5, h: 5, c: "hsl(280 70% 64%)",       d: 4 },
+        { a: 138,  r: 19, w: 3, h: 3, c: "hsl(347 90% 70%)",       d: 26 },
+        { a: 176,  r: 17, w: 5, h: 5, c: "hsl(221 80% 64%)",       d: 12 },
+        { a: 222,  r: 14, w: 4, h: 4, c: "hsl(28 92% 62%)",        d: 20 },
+        { a: 262,  r: 20, w: 6, h: 6, c: "var(--like)",            d: 2 },
+        { a: 308,  r: 16, w: 4, h: 4, c: "hsl(347 90% 68%)",       d: 16 }
+      ];
+      const ring = document.createElement("span");
+      ring.className = "ring";
+      burst.appendChild(ring);
+
+      for (const s of sparks) {
+        const el = document.createElement("span");
+        el.className = "spark";
+        el.style.setProperty("--a", s.a + "deg");
+        el.style.setProperty("--r", s.r + "px");
+        el.style.setProperty("--w", s.w + "px");
+        el.style.setProperty("--h", s.h + "px");
+        el.style.setProperty("--c", s.c);
+        el.style.setProperty("--d", s.d + "ms");
+        burst.appendChild(el);
+      }
+    })();
+
+    // ---- Count display: a vertical tabular roll -------------------
+    // Track holds [outgoing, incoming]; slide up/down then collapse to one.
+    function setCountInstant(n) {
+      countEl.innerHTML =
+        '<span class="count__track"><span class="count__cell">' + fmt(n) + "</span></span>";
+    }
+
+    function rollCount(from, to) {
+      if (reduce.matches || from === to) { setCountInstant(to); return; }
+      rolling = true;
+      const goingUp = to > from;           // liking → number climbs → slide up
+      const track = document.createElement("span");
+      track.className = "count__track";
+
+      const cellFrom = document.createElement("span");
+      cellFrom.className = "count__cell";
+      cellFrom.textContent = fmt(from);
+      const cellTo = document.createElement("span");
+      cellTo.className = "count__cell";
+      cellTo.textContent = fmt(to);
+
+      if (goingUp) { track.append(cellFrom, cellTo); track.style.transform = "translateY(0)"; }
+      else         { track.append(cellTo, cellFrom); track.style.transform = "translateY(-16px)"; }
+
+      countEl.replaceChildren(track);
+
+      // next frame: slide to the resting cell
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        track.style.transform = goingUp ? "translateY(-16px)" : "translateY(0)";
+      }));
+
+      const settle = () => { setCountInstant(to); rolling = false; };
+      track.addEventListener("transitionend", settle, { once: true });
+      // belt-and-suspenders in case transitionend is missed mid-interrupt
+      setTimeout(() => { if (rolling) settle(); }, 360);
+    }
+
+    // ---- The toggle ----------------------------------------------
+    // Optimistic + interruptible: state flips on press, the visuals are
+    // CSS transitions so a rapid un-like retargets cleanly mid-flight.
+    function apply(next) {
+      const from = liked ? BASE + 1 : BASE;
+      liked = next;
+      const to = liked ? BASE + 1 : BASE;
+
+      btn.classList.toggle("is-liked", liked);
+      btn.setAttribute("aria-pressed", String(liked));
+      btn.setAttribute("aria-label", "Like. " + fmt(to) + (liked ? " likes, liked" : " likes"));
+
+      rollCount(from, to);
+
+      // Celebrate exactly once — the first like of the session — and never
+      // when un-liking. Keeps repeated toggling calm.
+      if (liked && !celebrated && !reduce.matches) {
+        celebrated = true;
+        fireBurst();
+      }
+
+      status.textContent = liked ? "Liked. " + fmt(to) + " likes." : "Like removed.";
+    }
+
+    function fireBurst() {
+      heart.classList.remove("is-bursting");
+      void heart.offsetWidth;            // reflow so the animation restarts
+      heart.classList.add("is-bursting");
+      heart.addEventListener("animationend", function clean(e) {
+        if (e.target.classList.contains("ring")) {
+          heart.classList.remove("is-bursting");
+          heart.removeEventListener("animationend", clean);
+        }
+      });
+    }
+
+    // Lightweight, reversible → respond on press for an instant feel.
+    // Suppress the synthetic click that follows so we never double-toggle.
+    let armed = false;
+    btn.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      armed = true;
+      apply(!liked);
+    });
+    btn.addEventListener("click", (e) => {
+      if (armed) { armed = false; return; }   // already handled on pointerdown
+      apply(!liked);                            // keyboard / programmatic path
+    });
+    // Keyboard activation arrives as a click with no preceding pointerdown,
+    // so the click handler above covers Enter/Space correctly.
+    btn.addEventListener("keyup", () => { armed = false; });
+
+    // init
+    setCountInstant(BASE);
+  })();
+  </script>
+</body>
+</html>

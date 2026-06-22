@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create your account</title>
+<style>
+  :root {
+    /* ---- Motion tokens (the shared contract) ---- */
+    --duration-instant: 0ms;    /* keyboard / high-frequency: no animation */
+    --duration-fast:    150ms;  /* micro: hover, press, color, icon tint */
+    --duration-base:    200ms;  /* standard: error reveal, small state changes */
+    --duration-slow:    300ms;  /* larger reveals: success surface swap */
+    --duration-slower:  450ms;  /* full-card success morph */
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* small in-place change (default) */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* entering / decelerate */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* exiting / accelerate */
+    --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);    /* morph in place */
+    /* A touch of momentum for the success checkmark settling in */
+    --ease-pop:      cubic-bezier(0.34, 1.32, 0.5, 1);
+
+    /* ---- Surface & color ---- */
+    --bg:           hsl(40 12% 98%);
+    --card:         hsl(40 20% 99.6%);
+    --card-border:  hsl(40 9% 90%);
+
+    /* Inputs */
+    --field-bg:        hsl(40 16% 99.5%);
+    --field-bg-hover:  hsl(40 14% 98.4%);
+    --field-border:    hsl(40 8% 85%);
+    --field-border-hover: hsl(40 8% 78%);
+    --field-fill-focus: hsl(0 0% 100%);
+
+    /* Three text colors — never pure black */
+    --text-primary:   hsl(36 9% 13%);
+    --text-secondary: hsl(36 6% 38%);
+    --text-tertiary:  hsl(36 6% 56%);
+    --text-placeholder: hsl(36 5% 64%);
+
+    /* Brand / accent */
+    --accent:        hsl(244 62% 56%);
+    --accent-hover:  hsl(244 60% 51%);
+    --accent-press:  hsl(244 60% 47%);
+    --accent-ring:   hsl(244 70% 60%);
+
+    /* Functional colors */
+    --danger:       hsl(4 64% 52%);
+    --danger-text:  hsl(4 58% 44%);
+    --danger-bg:    hsl(4 70% 97%);
+    --danger-border:hsl(4 62% 78%);
+    --success:      hsl(150 56% 38%);
+    --success-bg:   hsl(150 50% 96%);
+
+    /* Focus ring */
+    --ring: var(--accent-ring);
+
+    /* Shadows — tinted with surface hue, layered, never pure black */
+    --shadow-card:
+      0 1px 1.5px hsl(40 14% 45% / 0.04),
+      0 4px 10px  hsl(40 14% 45% / 0.05),
+      0 16px 36px hsl(40 14% 45% / 0.06);
+    --shadow-field-focus:
+      0 1px 2px hsl(244 40% 30% / 0.05);
+    --shadow-btn:
+      0 1px 1px hsl(244 50% 30% / 0.16),
+      0 2px 5px hsl(244 50% 30% / 0.22),
+      inset 0 1px 0 hsl(0 0% 100% / 0.14);
+    --shadow-btn-hover:
+      0 2px 4px hsl(244 50% 30% / 0.18),
+      0 5px 14px hsl(244 50% 30% / 0.26),
+      inset 0 1px 0 hsl(0 0% 100% / 0.16);
+
+    /* Concentric radii: card 22 → field 12 (card padding 28 → but fields are nested
+       inset, so 12 reads concentric with the inner 10px content rhythm) */
+    --radius-card:  22px;
+    --radius-field: 12px;
+    --radius-btn:   12px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    /* Subtle, immobile vignette so the surface reads intentional, not flat */
+    background-image:
+      radial-gradient(120% 80% at 50% -10%, hsl(40 30% 100% / 0.9), transparent 60%);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text-primary);
+    display: grid;
+    place-items: center;
+    padding: 40px 24px;
+  }
+
+  /* ---- Card ---- */
+  .card {
+    position: relative;
+    width: 100%;
+    max-width: 384px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 30px 28px 28px;
+    /* Height animates smoothly between form and success without layout jump */
+    transition: none;
+  }
+
+  /* ---- Header ---- */
+  .head {
+    margin-bottom: 22px;
+  }
+  .brandmark {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;            /* concentric-ish with the field radius */
+    display: grid;
+    place-items: center;
+    color: hsl(0 0% 100%);
+    background: linear-gradient(150deg, hsl(244 64% 60%), hsl(258 60% 52%));
+    box-shadow:
+      0 1px 2px hsl(244 50% 30% / 0.22),
+      0 4px 10px hsl(244 50% 30% / 0.18),
+      inset 0 1px 0 hsl(0 0% 100% / 0.22);
+    margin-bottom: 16px;
+  }
+  .brandmark svg { width: 20px; height: 20px; }
+
+  .title {
+    margin: 0 0 5px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--text-primary);
+    text-wrap: balance;
+  }
+  .subtitle {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    text-wrap: pretty;
+  }
+
+  /* ---- Form ---- */
+  .form { display: flex; flex-direction: column; gap: 16px; }
+
+  .field { display: flex; flex-direction: column; }
+
+  .field__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 7px;
+  }
+  .field__label {
+    font-size: 13px;
+    font-weight: 550;
+    line-height: 1;
+    letter-spacing: -0.005em;
+    color: var(--text-secondary);
+    user-select: none;
+  }
+  .field__hint {
+    font-size: 12px;
+    font-weight: 450;
+    line-height: 1;
+    color: var(--text-tertiary);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  /* Input shell holds the field + a trailing slot for state icons */
+  .input-wrap { position: relative; display: flex; align-items: center; }
+
+  .input {
+    width: 100%;
+    height: 46px;
+    padding: 0 42px 0 14px;        /* room on the right for the status icon */
+    font-size: 16px;               /* ≥16px: no iOS zoom */
+    font-family: inherit;
+    font-weight: 450;
+    line-height: 1;
+    color: var(--text-primary);
+    background: var(--field-bg);
+    border: 1px solid var(--field-border);
+    border-radius: var(--radius-field);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    transition:
+      border-color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+  .input::placeholder {
+    color: var(--text-placeholder);
+    /* keep placeholder from looking like real input */
+    font-weight: 450;
+  }
+  .input:-webkit-autofill {
+    -webkit-text-fill-color: var(--text-primary);
+    -webkit-box-shadow: 0 0 0 1000px var(--field-bg) inset;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .input:hover:not(:focus) {
+      background: var(--field-bg-hover);
+      border-color: var(--field-border-hover);
+    }
+  }
+
+  .input:focus-visible {
+    background: var(--field-fill-focus);
+    border-color: var(--accent-ring);
+    box-shadow:
+      0 0 0 3px hsl(244 70% 60% / 0.16),
+      var(--shadow-field-focus);
+  }
+  /* Mouse-focus (not keyboard) still gets a calm focus treatment, no big ring */
+  .input:focus:not(:focus-visible) {
+    background: var(--field-fill-focus);
+    border-color: var(--field-border-hover);
+    box-shadow: var(--shadow-field-focus);
+  }
+
+  /* ---- Error state on a field ---- */
+  /* Color is never the ONLY signal: border + icon + text all carry it */
+  .field[data-state="error"] .input {
+    border-color: var(--danger-border);
+    background: var(--danger-bg);
+  }
+  .field[data-state="error"] .input:focus-visible {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px hsl(4 64% 52% / 0.15);
+  }
+  .field[data-state="error"] .field__label { color: var(--danger-text); }
+
+  /* ---- Valid state on a field (quiet, confirming) ---- */
+  .field[data-state="valid"] .input {
+    border-color: hsl(150 40% 72%);
+  }
+
+  /* ---- Trailing status icons (error ✕ / valid ✓) ---- */
+  .field__icon {
+    position: absolute;
+    right: 13px;
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.7);
+    transition:
+      opacity var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out);
+  }
+  .field__icon svg { width: 100%; height: 100%; }
+  .field__icon--error { color: var(--danger); }
+  .field__icon--valid { color: var(--success); }
+
+  .field[data-state="error"] .field__icon--error,
+  .field[data-state="valid"] .field__icon--valid {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* ---- Inline error message: grid-row collapse, no layout jump ---- */
+  /* Uses grid-template-rows 0fr→1fr so it animates open without measuring height */
+  .field__error {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows var(--duration-base) var(--ease-out),
+      opacity var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out);
+    transform: translateY(-2px);
+  }
+  /* Direct grid child: the clip track. No padding here so 0fr collapses to 0. */
+  .field__error > span {
+    overflow: hidden;
+    min-height: 0;
+  }
+  /* Inner row carries the padding/leading; it's clipped while collapsed. */
+  .field__error-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding-top: 7px;
+    font-size: 12.5px;
+    line-height: 1.35;
+    font-weight: 450;
+    color: var(--danger-text);
+    text-wrap: pretty;
+  }
+  .field__error svg {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    margin-top: 1px;        /* optical baseline nudge */
+  }
+  .field[data-state="error"] .field__error {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ---- Password visibility toggle ---- */
+  .reveal {
+    position: absolute;
+    right: 6px;
+    width: 34px;
+    height: 34px;             /* visual size; hit area extended below */
+    display: grid;
+    place-items: center;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    color: var(--text-tertiary);
+    border-radius: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+  /* Extend the clickable area to ≥44px tall without growing the visual button */
+  .reveal::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  /* When the password field shows a status icon, slide the reveal button left of it */
+  .field--password[data-state="error"] .reveal,
+  .field--password[data-state="valid"] .reveal { right: 30px; }
+  .reveal svg { width: 18px; height: 18px; }
+  .reveal .eye-off { display: none; }
+  .reveal[aria-pressed="true"] .eye-on { display: none; }
+  .reveal[aria-pressed="true"] .eye-off { display: block; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .reveal:hover { color: var(--text-secondary); background: hsl(40 8% 93%); }
+  }
+  .reveal:active { transform: scale(0.92); }
+  .reveal:focus-visible {
+    outline: none;
+    color: var(--text-secondary);
+    box-shadow: 0 0 0 2px var(--field-fill-focus), 0 0 0 4px var(--ring);
+  }
+
+  /* ---- Submit button ---- */
+  .submit {
+    position: relative;
+    height: 46px;
+    margin-top: 4px;
+    width: 100%;
+    border: 0;
+    border-radius: var(--radius-btn);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: hsl(0 0% 100%);
+    background: var(--accent);
+    box-shadow: var(--shadow-btn);
+    cursor: pointer;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .submit:hover:not(:disabled) {
+      background: var(--accent-hover);
+      box-shadow: var(--shadow-btn-hover);
+    }
+  }
+  .submit:active:not(:disabled) {
+    transform: scale(0.97);
+    background: var(--accent-press);
+  }
+  .submit:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--card),
+      0 0 0 4px var(--ring),
+      var(--shadow-btn);
+  }
+
+  /* Button content stacks: label and spinner cross-fade in place */
+  .submit__layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition:
+      opacity var(--duration-base) var(--ease-standard),
+      transform var(--duration-base) var(--ease-standard);
+  }
+  .submit__label { letter-spacing: -0.01em; }
+
+  .submit__spinner-layer {
+    opacity: 0;
+    transform: scale(0.9);
+    pointer-events: none;
+  }
+  .submit__spinner {
+    width: 18px; height: 18px;
+    color: hsl(0 0% 100%);
+  }
+  .submit__spinner circle {
+    opacity: 0.28;
+  }
+  .submit__spinner path {
+    opacity: 1;
+    transform-origin: center;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Loading: swap layers, dim the fill so it reads "working" not "disabled-broken" */
+  .submit[data-loading] {
+    cursor: progress;
+    background: var(--accent);
+  }
+  .submit[data-loading] .submit__label-layer {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  .submit[data-loading] .submit__spinner-layer {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .submit:disabled { cursor: not-allowed; }
+  /* When loading we keep full color; when truly disabled (none here) it'd dim */
+
+  /* ---- Meta line under the button ---- */
+  .meta {
+    margin: 16px 0 0;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-tertiary);
+  }
+  .meta a {
+    color: var(--text-secondary);
+    font-weight: 550;
+    text-decoration: none;
+    border-bottom: 1px solid hsl(40 8% 82%);
+    padding-bottom: 1px;
+    transition: color var(--duration-fast) var(--ease-standard),
+                border-color var(--duration-fast) var(--ease-standard);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .meta a:hover { color: var(--accent); border-color: var(--accent); }
+  }
+  .meta a:focus-visible {
+    outline: none;
+    border-radius: 3px;
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  }
+
+  /* ====================================================================
+     SUCCESS STATE — the form fades out and a success panel fades in.
+     Both share the card; we crossfade rather than swap the whole card so
+     the surface stays put (spatial continuity).
+     ==================================================================== */
+  .form-region {
+    transition:
+      opacity var(--duration-base) var(--ease-in),
+      transform var(--duration-base) var(--ease-in),
+      filter var(--duration-base) var(--ease-in);
+  }
+  .card[data-success] .head,
+  .card[data-success] .form-region {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+    filter: blur(2px);
+    pointer-events: none;
+    /* Collapse out of flow once faded so the success panel can center */
+    position: absolute;
+    left: 28px; right: 28px;
+  }
+
+  .success {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 6px 4px 4px;
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+    pointer-events: none;
+    /* Hidden until activated, then enter with --ease-out */
+    transition:
+      opacity var(--duration-slow) var(--ease-out) 60ms,
+      transform var(--duration-slow) var(--ease-out) 60ms;
+  }
+  .card[data-success] .success {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  /* Until success, keep the success block out of layout so it doesn't add height */
+  .success { height: 0; overflow: visible; margin: 0; }
+  .card[data-success] .success { height: auto; }
+
+  .success__badge {
+    width: 60px; height: 60px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    color: hsl(0 0% 100%);
+    background: linear-gradient(150deg, hsl(150 56% 44%), hsl(158 56% 36%));
+    box-shadow:
+      0 2px 6px hsl(150 50% 25% / 0.24),
+      0 8px 20px hsl(150 50% 25% / 0.20),
+      inset 0 1px 0 hsl(0 0% 100% / 0.28);
+    margin-bottom: 18px;
+  }
+  /* Check draws on with a stroke-dash; scale-pop the badge for delight */
+  .success__badge svg { width: 30px; height: 30px; }
+  .success__check {
+    stroke-dasharray: 28;
+    stroke-dashoffset: 28;
+  }
+  .card[data-success] .success__badge {
+    animation: badge-pop var(--duration-slower) var(--ease-pop) 120ms both;
+  }
+  .card[data-success] .success__check {
+    animation: check-draw 360ms var(--ease-out) 320ms forwards;
+  }
+  @keyframes badge-pop {
+    from { transform: scale(0.6); opacity: 0; }
+    60%  { transform: scale(1.04); }
+    to   { transform: scale(1); opacity: 1; }
+  }
+  @keyframes check-draw { to { stroke-dashoffset: 0; } }
+
+  .success__title {
+    margin: 0 0 6px;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    text-wrap: balance;
+  }
+  .success__body {
+    margin: 0 0 22px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    text-wrap: pretty;
+    max-width: 30ch;
+  }
+  .success__body b {
+    color: var(--text-primary);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .success__btn {
+    height: 44px;
+    padding: 0 22px;
+    border: 1px solid var(--card-border);
+    border-radius: 11px;
+    background: var(--card);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 550;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .success__btn:hover { background: hsl(40 10% 96.5%); color: var(--text-primary); border-color: var(--field-border-hover); }
+  }
+  .success__btn:active { transform: scale(0.97); }
+  .success__btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  }
+
+  /* ---- Forced-colors safety: shadows vanish, give real boundaries ---- */
+  @media (forced-colors: active) {
+    .card, .input, .submit, .success__btn { border: 1px solid CanvasText; }
+    .input:focus-visible,
+    .submit:focus-visible,
+    .reveal:focus-visible,
+    .success__btn:focus-visible,
+    .meta a:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+  }
+
+  /* ---- Reduced motion: substitute fades, drop travel/scale/blur ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .field__error,
+    .field__icon,
+    .form-region,
+    .success,
+    .submit__layer,
+    .card[data-success] .head,
+    .card[data-success] .form-region {
+      transition-duration: var(--duration-fast);
+      transition-timing-function: linear;
+    }
+    .field__icon { transform: none; }
+    .field[data-state="error"] .field__icon--error,
+    .field[data-state="valid"] .field__icon--valid { transform: none; }
+    .card[data-success] .head,
+    .card[data-success] .form-region { transform: none; filter: none; }
+    .success { transform: none; }
+    .card[data-success] .success { transform: none; }
+    .submit:active:not(:disabled) { transform: none; }
+    .reveal:active, .submit:active, .success__btn:active { transform: none; }
+    .submit__spinner path { animation-duration: 0.9s; } /* keep, but it's a small loop */
+    .card[data-success] .success__badge { animation: none; transform: scale(1); opacity: 1; }
+    .card[data-success] .success__check { animation: none; stroke-dashoffset: 0; }
+  }
+</style>
+</head>
+<body>
+  <main class="card" id="card">
+    <div class="head">
+      <div class="brandmark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 2.5 4 6v5.2c0 4.6 3.2 8.4 8 9.8 4.8-1.4 8-5.2 8-9.8V6l-8-3.5Z"
+                fill="hsl(0 0% 100% / 0.16)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="m8.6 12.2 2.3 2.3 4.5-4.7" stroke="currentColor" stroke-width="1.9"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 class="title">Create your account</h1>
+      <p class="subtitle">Start your free workspace — no credit card required.</p>
+    </div>
+
+    <div class="form-region">
+      <form class="form" id="form" novalidate>
+        <!-- Email -->
+        <div class="field field--email" data-field="email" data-state="idle">
+          <div class="field__top">
+            <label class="field__label" for="email">Email</label>
+          </div>
+          <div class="input-wrap">
+            <input class="input" id="email" name="email" type="email"
+                   inputmode="email" autocomplete="email" spellcheck="false"
+                   placeholder="you@company.com"
+                   aria-describedby="email-error" />
+            <span class="field__icon field__icon--valid" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path d="M4 9.2 7.3 12.5 14 5.6" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="field__icon field__icon--error" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="9" r="7.4" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M9 5.4v4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="9" cy="12.4" r="0.95" fill="currentColor"/>
+              </svg>
+            </span>
+          </div>
+          <p class="field__error" id="email-error" role="alert">
+            <span>
+              <span class="field__error-row">
+                <svg viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <circle cx="7" cy="7" r="5.8" stroke="currentColor" stroke-width="1.3"/>
+                  <path d="M7 4.2v3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  <circle cx="7" cy="9.7" r="0.8" fill="currentColor"/>
+                </svg>
+                <span class="field__error-text" data-error-text></span>
+              </span>
+            </span>
+          </p>
+        </div>
+
+        <!-- Password -->
+        <div class="field field--password" data-field="password" data-state="idle">
+          <div class="field__top">
+            <label class="field__label" for="password">Password</label>
+            <span class="field__hint" id="password-hint">8+ characters</span>
+          </div>
+          <div class="input-wrap">
+            <input class="input" id="password" name="password" type="password"
+                   autocomplete="new-password" spellcheck="false"
+                   placeholder="Create a password"
+                   aria-describedby="password-hint password-error" />
+            <button type="button" class="reveal" id="reveal"
+                    aria-pressed="false" aria-label="Show password" aria-controls="password">
+              <svg class="eye-on" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M1.7 10S4.6 4.5 10 4.5 18.3 10 18.3 10 15.4 15.5 10 15.5 1.7 10 1.7 10Z"
+                      stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+              <svg class="eye-off" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M7.3 4.9A8.3 8.3 0 0 1 10 4.5c5.4 0 8.3 5.5 8.3 5.5a14 14 0 0 1-2.2 2.9M5 5.9A13.7 13.7 0 0 0 1.7 10S4.6 15.5 10 15.5a8 8 0 0 0 2.9-.5"
+                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8.3 8.4a2.5 2.5 0 0 0 3.4 3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M2.5 2.5l15 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <span class="field__icon field__icon--valid" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path d="M4 9.2 7.3 12.5 14 5.6" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="field__icon field__icon--error" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="9" r="7.4" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M9 5.4v4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="9" cy="12.4" r="0.95" fill="currentColor"/>
+              </svg>
+            </span>
+          </div>
+          <p class="field__error" id="password-error" role="alert">
+            <span>
+              <span class="field__error-row">
+                <svg viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <circle cx="7" cy="7" r="5.8" stroke="currentColor" stroke-width="1.3"/>
+                  <path d="M7 4.2v3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  <circle cx="7" cy="9.7" r="0.8" fill="currentColor"/>
+                </svg>
+                <span class="field__error-text" data-error-text></span>
+              </span>
+            </span>
+          </p>
+        </div>
+
+        <button class="submit" id="submit" type="submit">
+          <span class="submit__layer submit__label-layer">
+            <span class="submit__label">Create account</span>
+          </span>
+          <span class="submit__layer submit__spinner-layer" aria-hidden="true">
+            <svg class="submit__spinner" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.6"/>
+              <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </button>
+      </form>
+
+      <p class="meta">Already have an account? <a href="#" id="signin">Sign in</a></p>
+    </div>
+
+    <!-- Success panel — crossfades over the form region, same card surface -->
+    <div class="success" id="success" role="status" aria-live="off">
+      <div class="success__badge" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path class="success__check" d="M9 16.5 14 21.5 23.5 11" stroke="currentColor"
+                stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2 class="success__title">You're all set</h2>
+      <p class="success__body">We sent a confirmation link to <b data-success-email>your inbox</b>. Open it to activate your workspace.</p>
+      <button type="button" class="success__btn" id="reset">Use a different email</button>
+    </div>
+  </main>
+
+  <!-- polite live region for async validation + success announcements -->
+  <div aria-live="polite" aria-atomic="true" id="sr-live"
+       style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var form    = document.getElementById("form");
+  var card    = document.getElementById("card");
+  var submit  = document.getElementById("submit");
+  var srLive  = document.getElementById("sr-live");
+  var success = document.getElementById("success");
+  var resetBtn = document.getElementById("reset");
+  var reveal  = document.getElementById("reveal");
+
+  var emailField = form.querySelector('[data-field="email"]');
+  var pwField    = form.querySelector('[data-field="password"]');
+  var emailInput = document.getElementById("email");
+  var pwInput    = document.getElementById("password");
+
+  var emailErr = emailField.querySelector("[data-error-text]");
+  var pwErr    = pwField.querySelector("[data-error-text]");
+
+  var submitting = false;
+
+  /* ---- Validation rules ------------------------------------------------ */
+  // Pragmatic email check: something@something.tld with no spaces.
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  function validateEmail(value) {
+    var v = value.trim();
+    if (!v) return "Enter your email address.";
+    if (!EMAIL_RE.test(v)) return "That doesn't look like a valid email.";
+    return null;
+  }
+  function validatePassword(value) {
+    if (!value) return "Choose a password to continue.";
+    if (value.length < 8) return "Use at least 8 characters.";
+    return null;
+  }
+
+  /* ---- Per-field state application ------------------------------------- */
+  function setFieldState(field, input, errorEl, message, options) {
+    options = options || {};
+    if (message) {
+      field.setAttribute("data-state", "error");
+      input.setAttribute("aria-invalid", "true");
+      // Only swap the text when it changes — avoids re-triggering role="alert"
+      if (errorEl.textContent !== message) errorEl.textContent = message;
+      return false;
+    }
+    input.removeAttribute("aria-invalid");
+    // "valid" only once the user has entered something non-trivial
+    if (options.markValid && input.value.trim().length > 0) {
+      field.setAttribute("data-state", "valid");
+    } else {
+      field.setAttribute("data-state", "idle");
+    }
+    return true;
+  }
+
+  /* Validate one field. `live` = soft (don't show empty-required errors while
+     the user is mid-flow); on blur/submit we show everything. */
+  function checkEmail(opts) {
+    opts = opts || {};
+    var msg = validateEmail(emailInput.value);
+    // While typing after an error, clear the error the moment it becomes valid
+    if (opts.soft && msg && emailField.getAttribute("data-state") !== "error") {
+      return false;
+    }
+    return setFieldState(emailField, emailInput, emailErr, msg, { markValid: true });
+  }
+  function checkPassword(opts) {
+    opts = opts || {};
+    var msg = validatePassword(pwInput.value);
+    if (opts.soft && msg && pwField.getAttribute("data-state") !== "error") {
+      return false;
+    }
+    return setFieldState(pwField, pwInput, pwErr, msg, { markValid: true });
+  }
+
+  /* ---- Blur: full validation (skip empty so we don't scold a field the
+     user just tabbed through without touching) --------------------------- */
+  emailInput.addEventListener("blur", function () {
+    if (submitting) return;
+    if (emailInput.value.trim() === "") {
+      // untouched: don't show an error, but clear any stale valid mark
+      if (emailField.getAttribute("data-state") !== "error") {
+        emailField.setAttribute("data-state", "idle");
+      }
+      return;
+    }
+    checkEmail();
+  });
+  pwInput.addEventListener("blur", function () {
+    if (submitting) return;
+    if (pwInput.value === "") {
+      if (pwField.getAttribute("data-state") !== "error") {
+        pwField.setAttribute("data-state", "idle");
+      }
+      return;
+    }
+    checkPassword();
+  });
+
+  /* ---- Input: forgive in real time. Once a field is in error, re-validate
+     on every keystroke so the error clears the instant it's fixed — but never
+     ESCALATE to a new error mid-typing (that's reserved for blur/submit). --- */
+  emailInput.addEventListener("input", function () {
+    if (emailField.getAttribute("data-state") === "error") {
+      if (validateEmail(emailInput.value) === null) {
+        setFieldState(emailField, emailInput, emailErr, null, { markValid: true });
+      }
+    } else if (emailField.getAttribute("data-state") === "valid") {
+      // keep the valid checkmark honest as they edit
+      if (validateEmail(emailInput.value) !== null) {
+        emailField.setAttribute("data-state", "idle");
+        emailInput.removeAttribute("aria-invalid");
+      }
+    }
+  });
+  pwInput.addEventListener("input", function () {
+    if (pwField.getAttribute("data-state") === "error") {
+      if (validatePassword(pwInput.value) === null) {
+        setFieldState(pwField, pwInput, pwErr, null, { markValid: true });
+      }
+    } else if (pwField.getAttribute("data-state") === "valid") {
+      if (validatePassword(pwInput.value) !== null) {
+        pwField.setAttribute("data-state", "idle");
+        pwInput.removeAttribute("aria-invalid");
+      }
+    }
+  });
+
+  /* ---- Password reveal toggle (lightweight, reversible → fire on press) -- */
+  function toggleReveal() {
+    var showing = reveal.getAttribute("aria-pressed") === "true";
+    var next = !showing;
+    reveal.setAttribute("aria-pressed", String(next));
+    reveal.setAttribute("aria-label", next ? "Hide password" : "Show password");
+    // Preserve caret position across the type swap
+    var start = pwInput.selectionStart, end = pwInput.selectionEnd;
+    pwInput.type = next ? "text" : "password";
+    try { pwInput.setSelectionRange(start, end); } catch (e) {}
+    pwInput.focus();
+  }
+  reveal.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0) return;
+    e.preventDefault();          // keep focus in the input; don't steal it
+    toggleReveal();
+  });
+  // Keyboard parity: Enter/Space activate (pointerdown won't fire for keys)
+  reveal.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleReveal(); }
+  });
+
+  /* ---- Fake network: ~1.5s, resolves success -------------------------- */
+  function fakeSignup() {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, 1500);
+    });
+  }
+
+  /* ---- Submit --------------------------------------------------------- */
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitting) return;
+
+    // Validate both on submit (shows all errors, including empties)
+    var okEmail = checkEmail();
+    var okPw    = checkPassword();
+
+    if (!okEmail || !okPw) {
+      // Move focus to the first invalid field for keyboard users
+      var first = !okEmail ? emailInput : pwInput;
+      first.focus();
+      srLive.textContent = "Please fix the errors in the form.";
+      return;
+    }
+
+    // Lock it down: disable the button immediately to block double-submit
+    submitting = true;
+    submit.disabled = true;
+    submit.setAttribute("data-loading", "");
+    submit.setAttribute("aria-busy", "true");
+    emailInput.readOnly = true;
+    pwInput.readOnly = true;
+    srLive.textContent = "Creating your account…";
+
+    fakeSignup().then(function () {
+      // Success: fill the personalized line, crossfade to the success panel
+      var emailValue = emailInput.value.trim();
+      success.querySelector("[data-success-email]").textContent = emailValue;
+
+      submit.removeAttribute("aria-busy");
+      card.setAttribute("data-success", "");
+      // Announce after the swap settles
+      srLive.textContent = "Account created. We sent a confirmation link to " + emailValue + ".";
+      // Move focus to the success panel's action for keyboard continuity
+      window.setTimeout(function () { resetBtn.focus(); }, 360);
+    });
+  });
+
+  /* ---- Reset back to the form (from success) -------------------------- */
+  resetBtn.addEventListener("click", function () {
+    card.removeAttribute("data-success");
+    submitting = false;
+    submit.disabled = false;
+    submit.removeAttribute("data-loading");
+    submit.removeAttribute("aria-busy");
+    emailInput.readOnly = false;
+    pwInput.readOnly = false;
+
+    // Clear values + states for a fresh start
+    emailInput.value = "";
+    pwInput.value = "";
+    emailField.setAttribute("data-state", "idle");
+    pwField.setAttribute("data-state", "idle");
+    emailInput.removeAttribute("aria-invalid");
+    pwInput.removeAttribute("aria-invalid");
+    // Reset reveal toggle
+    reveal.setAttribute("aria-pressed", "false");
+    reveal.setAttribute("aria-label", "Show password");
+    pwInput.type = "password";
+    srLive.textContent = "";
+
+    window.setTimeout(function () { emailInput.focus(); }, 320);
+  });
+
+  // The "Sign in" link is a placeholder for this demo
+  document.getElementById("signin").addEventListener("click", function (e) {
+    e.preventDefault();
+  });
+})();
+</script>
+</body>
+</html>

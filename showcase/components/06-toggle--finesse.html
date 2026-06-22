@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Toggle switch</title>
+<style>
+  :root {
+    /* ---- Motion tokens (the shared contract) ---- */
+    --duration-fast: 150ms;   /* micro: hover, press, color, tint */
+    --duration-base: 200ms;   /* standard: the toggle throw */
+    --duration-slow: 300ms;   /* icon cross-fade inside the knob */
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* small in-place change */
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1); /* entering / decelerate */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15); /* exiting / accelerate */
+    --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);    /* moving across / morph */
+    /* Knob throw carries a hair of momentum without being toy-like */
+    --ease-throw:    cubic-bezier(0.34, 1.4, 0.5, 1);
+
+    /* ---- Surface & color ---- */
+    --bg:            hsl(40 12% 98%);
+    --card:         hsl(40 14% 99.5%);
+    --card-border:  hsl(40 8% 90%);
+
+    /* Three text colors — never pure black */
+    --text-primary:   hsl(36 8% 14%);
+    --text-secondary: hsl(36 6% 40%);
+    --text-tertiary:  hsl(36 6% 55%);
+
+    /* Track */
+    --track-off:        hsl(40 6% 84%);
+    --track-off-hover:  hsl(40 6% 80%);
+    --track-on:         hsl(150 58% 40%);
+    --track-on-hover:   hsl(150 60% 36%);
+    --knob:             hsl(0 0% 100%);
+
+    /* Focus ring */
+    --ring: hsl(150 60% 40%);
+
+    /* Shadows — tinted with the surface hue, layered, never pure black */
+    --shadow-card:
+      0 1px 2px hsl(40 12% 50% / 0.05),
+      0 4px 12px hsl(40 12% 50% / 0.06),
+      0 12px 28px hsl(40 12% 50% / 0.05);
+    --shadow-knob-off:
+      0 1px 1px hsl(40 10% 30% / 0.10),
+      0 2px 4px hsl(40 10% 30% / 0.14),
+      0 0 0 0.5px hsl(40 10% 30% / 0.04);
+    --shadow-knob-on:
+      0 1px 1px hsl(150 30% 18% / 0.14),
+      0 3px 7px hsl(150 30% 18% / 0.22),
+      0 0 0 0.5px hsl(150 30% 18% / 0.05);
+
+    /* Track geometry — concentric: knob radius = track radius - inset */
+    --track-w: 52px;
+    --track-h: 32px;
+    --knob-size: 26px;
+    --knob-inset: 3px;
+    --knob-travel: calc(var(--track-w) - var(--knob-size) - (2 * var(--knob-inset)));
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    color: var(--text-primary);
+    display: grid;
+    place-items: center;
+    padding: 40px 28px;
+  }
+
+  /* ---- Card surface holding the settings rows ---- */
+  .panel {
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 18px;              /* outer radius */
+    box-shadow: var(--shadow-card);
+    padding: 6px;                     /* gap between outer card and inner rows */
+  }
+
+  /* Settings row: label + description on the left, switch on the right */
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 14px;
+    border-radius: 12px;             /* inner = outer(18) - padding(6) = 12 */
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+  .row + .row { position: relative; }
+  /* Hairline divider that doesn't bleed to the rounded edges */
+  .row + .row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 14px;
+    right: 14px;
+    height: 1px;
+    background: var(--card-border);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .row:hover {
+      background-color: hsl(40 10% 96%);
+    }
+    .row:hover + .row::before,
+    .row:hover::before { background: transparent; }
+  }
+
+  .row__text {
+    min-width: 0;                    /* allow truncation / wrap */
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    user-select: none;
+  }
+
+  .row__label {
+    font-size: 15px;
+    font-weight: 560;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    text-wrap: balance;
+  }
+
+  .row__desc {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    text-wrap: pretty;
+  }
+
+  /* ---- The switch ---- */
+  /* Native checkbox visually hidden but kept in the a11y tree & tab order */
+  .switch {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    /* Generous hit area: 44px tall, extends beyond the 32px track */
+    width: var(--track-w);
+    height: 44px;
+    border: 0;
+    padding: 0;
+    margin: -6px 0;                  /* absorb the extra height so the row stays compact */
+    background: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .switch__input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;                      /* sit ABOVE the track so the whole switch is clickable */
+  }
+
+  /* The visible track */
+  .switch__track {
+    position: relative;
+    width: var(--track-w);
+    height: var(--track-h);
+    border-radius: 999px;            /* fully pill */
+    background: var(--track-off);
+    box-shadow:
+      inset 0 1px 2px hsl(40 10% 40% / 0.16),
+      inset 0 0 0 1px hsl(40 10% 40% / 0.04);
+    transition:
+      background-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard);
+  }
+
+  /* The sliding knob */
+  .switch__knob {
+    position: absolute;
+    top: var(--knob-inset);
+    left: var(--knob-inset);
+    width: var(--knob-size);
+    height: var(--knob-size);
+    border-radius: 999px;
+    background: var(--knob);
+    box-shadow: var(--shadow-knob-off);
+    display: grid;
+    place-items: center;
+    transform: translateX(0);
+    transition:
+      transform var(--duration-base) var(--ease-throw),
+      box-shadow var(--duration-base) var(--ease-standard),
+      width var(--duration-fast) var(--ease-standard);
+    will-change: transform;
+  }
+
+  /* Icons cross-fade inside the knob — stacked on one grid cell */
+  .switch__icon {
+    grid-area: 1 / 1;
+    width: 13px;
+    height: 13px;
+    transition:
+      opacity var(--duration-slow) var(--ease-standard),
+      transform var(--duration-slow) var(--ease-standard),
+      filter var(--duration-slow) var(--ease-standard);
+  }
+  .switch__icon--check {
+    color: var(--track-on);
+    opacity: 0;
+    transform: scale(0.6) rotate(-12deg);
+    filter: blur(3px);
+  }
+  .switch__icon--minus {
+    color: var(--text-tertiary);
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+
+  /* ---------- ON state ---------- */
+  .switch__input:checked ~ .switch__track {
+    background: var(--track-on);
+    box-shadow:
+      inset 0 1px 2px hsl(150 40% 22% / 0.22),
+      inset 0 0 0 1px hsl(150 40% 22% / 0.05);
+  }
+  .switch__input:checked ~ .switch__track .switch__knob {
+    transform: translateX(var(--knob-travel));
+    box-shadow: var(--shadow-knob-on);
+  }
+  .switch__input:checked ~ .switch__track .switch__icon--check {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    filter: blur(0);
+  }
+  .switch__input:checked ~ .switch__track .switch__icon--minus {
+    opacity: 0;
+    transform: scale(0.6) rotate(12deg);
+    filter: blur(3px);
+  }
+
+  /* ---------- Hover (fine pointers only) ---------- */
+  @media (hover: hover) and (pointer: fine) {
+    .switch:hover .switch__track {
+      background: var(--track-off-hover);
+    }
+    .switch:hover .switch__input:checked ~ .switch__track {
+      background: var(--track-on-hover);
+    }
+  }
+
+  /* ---------- Press: the knob squishes toward its travel direction ---------- */
+  /* Tactile "give" — knob stretches slightly wide, like a physical key */
+  .switch:active .switch__knob {
+    width: calc(var(--knob-size) + 4px);
+  }
+  /* When ON and pressed, the knob is at the right edge — grow leftward */
+  .switch__input:checked ~ .switch__track .switch__knob { transform-origin: right center; }
+  .switch:active .switch__input:checked ~ .switch__track .switch__knob {
+    transform: translateX(calc(var(--knob-travel) - 4px));
+  }
+  .switch__knob { transform-origin: left center; }
+
+  /* ---------- Focus-visible ring (keyboard only), drawn with box-shadow ---------- */
+  .switch__input:focus-visible ~ .switch__track {
+    box-shadow:
+      0 0 0 2px var(--bg),
+      0 0 0 4px var(--ring),
+      inset 0 1px 2px hsl(40 10% 40% / 0.16);
+  }
+  .switch__input:checked:focus-visible ~ .switch__track {
+    box-shadow:
+      0 0 0 2px var(--bg),
+      0 0 0 4px var(--ring),
+      inset 0 1px 2px hsl(150 40% 22% / 0.22);
+  }
+
+  /* ---------- Disabled ---------- */
+  .switch__input:disabled { cursor: not-allowed; }
+  .switch__input:disabled ~ .switch__track { opacity: 0.5; }
+  .row[data-disabled] { cursor: not-allowed; }
+  .row[data-disabled] .switch { cursor: not-allowed; }
+  .row[data-disabled] .row__label { color: var(--text-secondary); }
+
+  /* ---------- Status line (trigger-local feedback) ---------- */
+  .row__status {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;   /* count never reflows */
+    opacity: 0;
+    transform: translateY(-2px);
+    transition:
+      opacity var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out),
+      color var(--duration-fast) var(--ease-standard);
+    margin-top: 2px;
+    min-height: 12px;
+  }
+  .row__status[data-show] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .row__status[data-tone="error"] { color: hsl(4 62% 48%); }
+
+  /* Forced-colors safety: keep a real border the OS can paint */
+  @media (forced-colors: active) {
+    .switch__track { border: 1px solid CanvasText; }
+    .switch__input:focus-visible ~ .switch__track,
+    .switch__input:checked:focus-visible ~ .switch__track {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+  }
+
+  /* ---------- Reduced motion: substitute, don't delete ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    .switch__track,
+    .switch__knob,
+    .switch__icon,
+    .row,
+    .row__status {
+      transition-duration: var(--duration-fast);
+      transition-timing-function: linear;
+    }
+    .switch__knob { will-change: auto; }
+    .switch__icon { filter: none !important; }
+    .switch:active .switch__knob { width: var(--knob-size); }
+    .switch:active .switch__input:checked ~ .switch__track .switch__knob {
+      transform: translateX(var(--knob-travel));
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="panel" role="group" aria-label="Notification settings">
+
+    <!-- Row 1 -->
+    <div class="row">
+      <span class="row__text">
+        <span class="row__label" id="lbl-1">Email notifications</span>
+        <span class="row__desc" id="desc-1">Get a digest of activity in your workspace, delivered every morning.</span>
+        <span class="row__status" data-status aria-hidden="true"></span>
+      </span>
+      <span class="switch">
+        <input class="switch__input" type="checkbox" role="switch"
+               aria-labelledby="lbl-1" aria-describedby="desc-1" checked />
+        <span class="switch__track" aria-hidden="true">
+          <span class="switch__knob">
+            <svg class="switch__icon switch__icon--minus" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <svg class="switch__icon switch__icon--check" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6.4 4.9 8.8 9.6 3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </span>
+      </span>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="row">
+      <span class="row__text">
+        <span class="row__label" id="lbl-2">Push to mobile</span>
+        <span class="row__desc" id="desc-2">Send time-sensitive alerts to your phone when you're away.</span>
+        <span class="row__status" data-status aria-hidden="true"></span>
+      </span>
+      <span class="switch">
+        <input class="switch__input" type="checkbox" role="switch"
+               aria-labelledby="lbl-2" aria-describedby="desc-2" />
+        <span class="switch__track" aria-hidden="true">
+          <span class="switch__knob">
+            <svg class="switch__icon switch__icon--minus" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <svg class="switch__icon switch__icon--check" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6.4 4.9 8.8 9.6 3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </span>
+      </span>
+    </div>
+
+    <!-- Row 3 — disabled, to show the inert state -->
+    <div class="row" data-disabled>
+      <span class="row__text">
+        <span class="row__label" id="lbl-3">SMS alerts</span>
+        <span class="row__desc" id="desc-3">Add a verified phone number to enable text messages.</span>
+        <span class="row__status" data-status aria-hidden="true"></span>
+      </span>
+      <span class="switch">
+        <input class="switch__input" type="checkbox" role="switch"
+               aria-labelledby="lbl-3" aria-describedby="desc-3" disabled />
+        <span class="switch__track" aria-hidden="true">
+          <span class="switch__knob">
+            <svg class="switch__icon switch__icon--minus" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <svg class="switch__icon switch__icon--check" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6.4 4.9 8.8 9.6 3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </span>
+      </span>
+    </div>
+
+  </div>
+
+  <!-- polite live region for screen-reader status announcements -->
+  <div aria-live="polite" aria-atomic="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;" id="sr-live"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var srLive = document.getElementById("sr-live");
+
+  // Simulated network: occasionally "fails" to demonstrate optimistic rollback.
+  // Most calls succeed quickly; the 2nd toggle is rigged to fail once to showcase
+  // the rollback path, then succeeds on retry.
+  var failOnce = { "Push to mobile": true };
+
+  function fakeRequest(label, nextState) {
+    return new Promise(function (resolve, reject) {
+      var latency = 420 + Math.random() * 360;
+      setTimeout(function () {
+        if (failOnce[label]) {
+          failOnce[label] = false;       // only fail the first time
+          reject(new Error("network"));
+        } else {
+          resolve(nextState);
+        }
+      }, latency);
+    });
+  }
+
+  document.querySelectorAll(".switch").forEach(function (sw) {
+    var input = sw.querySelector(".switch__input");
+    if (input.disabled) return;
+
+    var row = sw.closest(".row");
+    var label = row.querySelector(".row__label").textContent.trim();
+    var status = row.querySelector("[data-status]");
+
+    var inFlight = false;
+    var statusTimer = null;
+
+    function showStatus(text, tone) {
+      if (statusTimer) clearTimeout(statusTimer);
+      status.textContent = text;
+      status.setAttribute("data-tone", tone || "ok");
+      status.setAttribute("data-show", "");
+      srLive.textContent = label + " " + text;
+    }
+
+    function hideStatusAfter(ms) {
+      if (statusTimer) clearTimeout(statusTimer);
+      statusTimer = setTimeout(function () {
+        status.removeAttribute("data-show");
+      }, ms);
+    }
+
+    // Optimistic update: the checkbox flips instantly (native), then we reconcile.
+    function reconcile() {
+      if (inFlight) return;             // ignore re-entry while a request is pending
+      var optimistic = input.checked;   // already flipped by the browser
+      var previous = !optimistic;
+      inFlight = true;
+
+      showStatus(optimistic ? "On" : "Off", "ok");
+
+      fakeRequest(label, optimistic).then(
+        function () {
+          inFlight = false;
+          showStatus("Saved · " + (optimistic ? "On" : "Off"), "ok");
+          hideStatusAfter(1600);
+        },
+        function () {
+          // Roll back to the captured previous state and explain why.
+          input.checked = previous;
+          inFlight = false;
+          showStatus("Couldn't save — reverted", "error");
+          hideStatusAfter(2600);
+        }
+      );
+    }
+
+    // Fire on the native change (release for safety) — the browser has already
+    // toggled .checked, giving us a free optimistic flip.
+    input.addEventListener("change", reconcile);
+  });
+})();
+</script>
+</body>
+</html>

@@ -10,3 +10,7 @@ Thumbs.db
 
 # Node
 node_modules/
+
+# Internal artifacts (kept local, not part of the public showcase)
+showcase/results.json
+marketing/

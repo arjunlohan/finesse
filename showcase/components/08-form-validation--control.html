@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create account</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --card: #ffffff;
+    --ink: hsl(220 18% 14%);
+    --ink-soft: hsl(220 10% 42%);
+    --ink-faint: hsl(220 8% 58%);
+    --line: hsl(220 14% 90%);
+    --line-strong: hsl(220 12% 84%);
+    --field: hsl(220 20% 99%);
+    --accent: hsl(244 62% 56%);
+    --accent-press: hsl(244 60% 49%);
+    --accent-ring: hsl(244 80% 60% / 0.16);
+    --danger: hsl(2 66% 50%);
+    --danger-soft: hsl(2 72% 96%);
+    --danger-ring: hsl(2 74% 56% / 0.14);
+    --success: hsl(154 56% 38%);
+    --success-soft: hsl(154 52% 95%);
+    --shadow-sm: 0 1px 2px hsl(220 30% 10% / 0.04);
+    --shadow-card:
+      0 1px 1px hsl(220 30% 12% / 0.03),
+      0 8px 18px hsl(220 30% 12% / 0.05),
+      0 24px 48px hsl(220 30% 12% / 0.05);
+    --radius: 14px;
+    --radius-field: 11px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 22px;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 30px 28px 28px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 22px;
+  }
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: var(--accent);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 2px 6px hsl(244 62% 56% / 0.32);
+    flex: none;
+  }
+  .brand-mark svg { display: block; }
+  .brand-name {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .heading {
+    margin: 0 0 4px;
+    font-size: 21px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .sub {
+    margin: 0 0 24px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  .field { margin-bottom: 16px; }
+
+  .field-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 7px;
+  }
+  .field-label label {
+    font-size: 12.5px;
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+
+  .control {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .control .lead {
+    position: absolute;
+    left: 13px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-faint);
+    pointer-events: none;
+    transition: color 0.18s var(--ease);
+  }
+
+  input {
+    width: 100%;
+    height: 46px;
+    padding: 0 14px 0 40px;
+    font: inherit;
+    font-size: 14.5px;
+    color: var(--ink);
+    background: var(--field);
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--radius-field);
+    outline: none;
+    transition:
+      border-color 0.18s var(--ease),
+      background 0.18s var(--ease),
+      box-shadow 0.18s var(--ease);
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input::placeholder { color: var(--ink-faint); }
+
+  input:hover:not(:focus) { border-color: hsl(220 12% 78%); }
+
+  input:focus {
+    background: var(--card);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-ring);
+  }
+  .control:focus-within .lead { color: var(--accent); }
+
+  .field.invalid input {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+  }
+  .field.invalid input:focus {
+    box-shadow: 0 0 0 4px var(--danger-ring);
+  }
+  .field.invalid .lead { color: var(--danger); }
+  .field.invalid .pw-toggle { color: var(--danger); }
+
+  /* password reveal toggle */
+  .pw-toggle {
+    position: absolute;
+    right: 6px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.16s var(--ease), background 0.16s var(--ease);
+  }
+  .pw-toggle:hover { color: var(--ink-soft); background: hsl(220 14% 95%); }
+  .pw-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-ring);
+    color: var(--accent);
+  }
+  .control.has-toggle input { padding-right: 44px; }
+
+  /* error message reveal */
+  .msg {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.28s var(--ease);
+  }
+  .field.invalid .msg { grid-template-rows: 1fr; }
+  .msg-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+  .msg-text {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding-top: 7px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--danger);
+    opacity: 0;
+    transform: translateY(-3px);
+    transition: opacity 0.24s var(--ease), transform 0.24s var(--ease);
+  }
+  .field.invalid .msg-text { opacity: 1; transform: translateY(0); }
+  .msg-text svg { flex: none; }
+
+  /* strength meter */
+  .meter {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    height: 4px;
+  }
+  .meter span {
+    flex: 1;
+    border-radius: 3px;
+    background: var(--line);
+    transition: background 0.3s var(--ease);
+  }
+  .field.invalid ~ .meter span { background: var(--line); }
+
+  .pw-block .hint {
+    margin-top: 7px;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    transition: color 0.2s var(--ease);
+  }
+
+  /* submit button */
+  .submit {
+    position: relative;
+    width: 100%;
+    height: 47px;
+    margin-top: 22px;
+    border: none;
+    border-radius: var(--radius-field);
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow: 0 1px 2px hsl(244 60% 40% / 0.3), 0 4px 12px hsl(244 62% 56% / 0.28);
+    transition:
+      background 0.18s var(--ease),
+      transform 0.12s var(--ease),
+      box-shadow 0.18s var(--ease),
+      opacity 0.18s var(--ease);
+  }
+  .submit:hover { background: var(--accent-press); }
+  .submit:active { transform: scale(0.985); }
+  .submit:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--accent-ring), 0 4px 12px hsl(244 62% 56% / 0.28);
+  }
+
+  .submit-layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.25s var(--ease), transform 0.35s var(--ease);
+  }
+  .submit-default { opacity: 1; transform: translateY(0); }
+  .submit-loading { opacity: 0; transform: translateY(100%); }
+  .submit-done { opacity: 0; transform: translateY(100%); }
+
+  /* loading state */
+  .submit.loading { cursor: progress; pointer-events: none; }
+  .submit.loading .submit-default { opacity: 0; transform: translateY(-100%); }
+  .submit.loading .submit-loading { opacity: 1; transform: translateY(0); }
+
+  /* success state */
+  .submit.done {
+    background: var(--success);
+    pointer-events: none;
+    box-shadow: 0 1px 2px hsl(154 56% 28% / 0.3), 0 4px 12px hsl(154 56% 38% / 0.28);
+  }
+  .submit.done .submit-default { opacity: 0; transform: translateY(-100%); }
+  .submit.done .submit-done { opacity: 1; transform: translateY(0); }
+
+  .spinner {
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    border: 2px solid hsl(0 0% 100% / 0.35);
+    border-top-color: #fff;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .check-anim {
+    width: 18px;
+    height: 18px;
+    stroke-dasharray: 22;
+    stroke-dashoffset: 22;
+  }
+  .submit.done .check-anim {
+    animation: draw 0.4s var(--ease) 0.05s forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .foot {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .foot a {
+    color: var(--accent);
+    font-weight: 550;
+    text-decoration: none;
+  }
+  .foot a:hover { text-decoration: underline; }
+
+  /* success banner that overlays after completion */
+  .done-note {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.4s var(--ease) 0.1s;
+  }
+  .card.complete .done-note { grid-template-rows: 1fr; }
+  .done-note-inner { overflow: hidden; min-height: 0; }
+  .done-note-text {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 16px;
+    padding: 11px 13px;
+    background: var(--success-soft);
+    border: 1px solid hsl(154 40% 84%);
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: var(--success);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.3s var(--ease) 0.25s, transform 0.3s var(--ease) 0.25s;
+  }
+  .card.complete .done-note-text { opacity: 1; transform: translateY(0); }
+  .done-note-text svg { flex: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <form class="card" id="card" novalidate autocomplete="off">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 1.5l5.5 3v4.2c0 3.1-2.3 5-5.5 5.8C4.8 13.7 2.5 11.8 2.5 8.7V4.5L8 1.5z" fill="#fff" fill-opacity="0.18"/>
+            <path d="M5.4 8.2l1.8 1.8 3.4-3.6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="brand-name">Northwind</span>
+      </div>
+
+      <h1 class="heading">Create your account</h1>
+      <p class="sub">Start your 14-day free trial. No credit card required.</p>
+
+      <div class="field" id="emailField">
+        <div class="field-label">
+          <label for="email">Email</label>
+        </div>
+        <div class="control">
+          <span class="lead" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2.5"/>
+              <path d="M3.5 7l8.5 5.5L20.5 7"/>
+            </svg>
+          </span>
+          <input id="email" name="email" type="email" inputmode="email" placeholder="you@company.com"
+                 autocomplete="off" aria-describedby="emailMsg" />
+        </div>
+        <div class="msg" id="emailMsg" role="alert" aria-live="polite">
+          <div class="msg-inner">
+            <div class="msg-text">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.2v.01"/>
+              </svg>
+              <span id="emailMsgText">Enter a valid email address.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field pw-block" id="pwField">
+        <div class="field-label">
+          <label for="password">Password</label>
+        </div>
+        <div class="control has-toggle">
+          <span class="lead" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/>
+              <path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5"/>
+            </svg>
+          </span>
+          <input id="password" name="password" type="password" placeholder="At least 8 characters"
+                 autocomplete="new-password" aria-describedby="pwMsg" />
+          <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password" aria-pressed="false">
+            <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/>
+              <circle cx="12" cy="12" r="2.6"/>
+            </svg>
+          </button>
+        </div>
+        <div class="meter" id="meter" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="msg" id="pwMsg" role="alert" aria-live="polite">
+          <div class="msg-inner">
+            <div class="msg-text">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.2v.01"/>
+              </svg>
+              <span id="pwMsgText">Password must be at least 8 characters.</span>
+            </div>
+          </div>
+        </div>
+        <p class="hint" id="pwHint">Use 8 or more characters with a mix of letters and numbers.</p>
+      </div>
+
+      <button type="submit" class="submit" id="submit">
+        <span class="submit-layer submit-default">Create account</span>
+        <span class="submit-layer submit-loading" aria-hidden="true">
+          <span class="spinner"></span>Creating account
+        </span>
+        <span class="submit-layer submit-done" aria-hidden="true">
+          <svg class="check-anim" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 6.5"/>
+          </svg>
+          Account created
+        </span>
+      </button>
+
+      <div class="done-note" aria-hidden="true">
+        <div class="done-note-inner">
+          <div class="done-note-text">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4L12 14l-3-3"/>
+            </svg>
+            <span>Welcome aboard. We've sent a confirmation link to your inbox.</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="foot">Already have an account? <a href="#" id="signin">Sign in</a></p>
+    </form>
+  </main>
+
+  <script>
+    (function () {
+      var form = document.getElementById('card');
+      var emailEl = document.getElementById('email');
+      var pwEl = document.getElementById('password');
+      var emailField = document.getElementById('emailField');
+      var pwField = document.getElementById('pwField');
+      var emailMsgText = document.getElementById('emailMsgText');
+      var submit = document.getElementById('submit');
+      var pwToggle = document.getElementById('pwToggle');
+      var eyeIcon = document.getElementById('eyeIcon');
+      var meter = document.getElementById('meter');
+      var meterBars = meter.querySelectorAll('span');
+      var pwHint = document.getElementById('pwHint');
+
+      var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      var submitted = false;
+      var locked = false;
+
+      function validateEmail(show) {
+        var v = emailEl.value.trim();
+        var ok;
+        if (v.length === 0) {
+          ok = false;
+          emailMsgText.textContent = 'Email address is required.';
+        } else if (!EMAIL_RE.test(v)) {
+          ok = false;
+          emailMsgText.textContent = 'Enter a valid email address.';
+        } else {
+          ok = true;
+        }
+        if (show) emailField.classList.toggle('invalid', !ok);
+        return ok;
+      }
+
+      function validatePassword(show) {
+        var ok = pwEl.value.length >= 8;
+        if (show) pwField.classList.toggle('invalid', !ok);
+        return ok;
+      }
+
+      function scorePassword(v) {
+        if (!v) return 0;
+        var s = 0;
+        if (v.length >= 8) s++;
+        if (v.length >= 12) s++;
+        if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++;
+        if (/\d/.test(v) || /[^A-Za-z0-9]/.test(v)) s++;
+        return Math.min(s, 4);
+      }
+
+      var STRENGTH_COLORS = [
+        'hsl(220 14% 90%)',
+        'hsl(2 66% 56%)',
+        'hsl(32 84% 52%)',
+        'hsl(45 80% 48%)',
+        'hsl(154 56% 42%)'
+      ];
+
+      function paintMeter() {
+        var score = scorePassword(pwEl.value);
+        meterBars.forEach(function (bar, i) {
+          bar.style.background = i < score ? STRENGTH_COLORS[score] : 'var(--line)';
+        });
+      }
+
+      function clearOnEdit(field, el, validator) {
+        el.addEventListener('input', function () {
+          if (field.classList.contains('invalid') && validator(false)) {
+            field.classList.remove('invalid');
+          }
+        });
+      }
+
+      clearOnEdit(emailField, emailEl, validateEmail);
+      clearOnEdit(pwField, pwEl, validatePassword);
+
+      emailEl.addEventListener('blur', function () {
+        if (submitted || emailEl.value.trim().length) validateEmail(true);
+      });
+      pwEl.addEventListener('blur', function () {
+        if (submitted || pwEl.value.length) validatePassword(true);
+      });
+
+      pwEl.addEventListener('input', paintMeter);
+
+      pwToggle.addEventListener('click', function () {
+        var showing = pwEl.type === 'text';
+        pwEl.type = showing ? 'password' : 'text';
+        pwToggle.setAttribute('aria-pressed', String(!showing));
+        pwToggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+        if (!showing) {
+          eyeIcon.innerHTML = '<path d="M4 4l16 16"/><path d="M9.9 5.3A9.6 9.6 0 0 1 12 5.5c6.5 0 10 6.5 10 6.5a16 16 0 0 1-3.3 4"/><path d="M6.3 7.4A15.7 15.7 0 0 0 2 12s3.5 6.5 10 6.5a9.5 9.5 0 0 0 3.4-.6"/><path d="M9.5 11.2a2.6 2.6 0 0 0 3.4 3.4"/>';
+        } else {
+          eyeIcon.innerHTML = '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/>';
+        }
+        pwEl.focus();
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (locked) return;
+        submitted = true;
+
+        var emailOk = validateEmail(true);
+        var pwOk = validatePassword(true);
+
+        if (!emailOk || !pwOk) {
+          var firstBad = !emailOk ? emailEl : pwEl;
+          firstBad.focus();
+          var f = !emailOk ? emailField : pwField;
+          f.animate(
+            [
+              { transform: 'translateX(0)' },
+              { transform: 'translateX(-5px)' },
+              { transform: 'translateX(5px)' },
+              { transform: 'translateX(-3px)' },
+              { transform: 'translateX(0)' }
+            ],
+            { duration: 280, easing: 'ease-in-out' }
+          );
+          return;
+        }
+
+        locked = true;
+        submit.classList.add('loading');
+        emailEl.readOnly = true;
+        pwEl.readOnly = true;
+
+        setTimeout(function () {
+          submit.classList.remove('loading');
+          submit.classList.add('done');
+          form.classList.add('complete');
+        }, 1500);
+      });
+
+      paintMeter();
+    })();
+  </script>
+</body>
+</html>

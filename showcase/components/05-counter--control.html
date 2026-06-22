@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Active now</title>
+<style>
+  :root {
+    --page-bg: hsl(40 12% 98%);
+    --surface: #ffffff;
+    --ink: hsl(222 22% 12%);
+    --ink-soft: hsl(220 9% 42%);
+    --ink-faint: hsl(220 8% 56%);
+    --hairline: hsl(220 14% 91%);
+    --hairline-soft: hsl(220 16% 95%);
+
+    --accent: hsl(152 62% 42%);
+    --accent-strong: hsl(154 66% 36%);
+    --accent-deep: hsl(157 64% 26%);
+    --accent-tint: hsl(152 56% 95%);
+    --accent-glow: hsl(152 64% 42% / 0.18);
+
+    --radius-card: 24px;
+    --radius-btn: 13px;
+
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+
+    --shadow-card:
+      0 1px 1px rgba(28, 36, 30, 0.04),
+      0 4px 10px -4px rgba(28, 36, 30, 0.07),
+      0 20px 44px -18px rgba(20, 50, 36, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--page-bg);
+    background-image:
+      radial-gradient(120% 110% at 50% -8%, hsl(152 48% 98%) 0%, rgba(255,255,255,0) 52%),
+      radial-gradient(100% 80% at 100% 112%, hsl(40 40% 96%) 0%, rgba(255,255,255,0) 60%);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 36px 24px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .card {
+    position: relative;
+    width: 100%;
+    max-width: 348px;
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    padding: 26px 28px 24px;
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(160deg, hsl(152 50% 88% / 0.85), rgba(255,255,255,0) 42%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--ink-soft);
+  }
+
+  .pulse {
+    position: relative;
+    width: 9px;
+    height: 9px;
+    flex: none;
+  }
+  .pulse i {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .pulse i.core { box-shadow: 0 0 0 0 var(--accent-glow); }
+  .pulse i.ring {
+    background: var(--accent);
+    opacity: 0.55;
+    animation: ripple 2.4s var(--ease-soft) infinite;
+  }
+  @keyframes ripple {
+    0%   { transform: scale(1);   opacity: 0.5; }
+    70%  { transform: scale(2.6); opacity: 0; }
+    100% { transform: scale(2.6); opacity: 0; }
+  }
+
+  .live-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    background: var(--accent-tint);
+    border: 1px solid hsl(152 46% 86%);
+    padding: 4px 9px 4px 8px;
+    border-radius: 999px;
+  }
+  .live-tag .bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 1.5px;
+    height: 9px;
+  }
+  .live-tag .bars span {
+    width: 2px;
+    background: var(--accent-strong);
+    border-radius: 1px;
+    animation: eq 1.1s var(--ease-soft) infinite;
+  }
+  .live-tag .bars span:nth-child(1) { height: 40%; animation-delay: 0s; }
+  .live-tag .bars span:nth-child(2) { height: 100%; animation-delay: 0.18s; }
+  .live-tag .bars span:nth-child(3) { height: 65%; animation-delay: 0.36s; }
+  @keyframes eq {
+    0%, 100% { transform: scaleY(0.4); }
+    50%      { transform: scaleY(1); }
+  }
+
+  .value-zone {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    min-height: 76px;
+  }
+
+  .odometer {
+    display: inline-flex;
+    align-items: stretch;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    user-select: none;
+  }
+
+  .digit {
+    position: relative;
+    display: inline-block;
+    height: 68px;
+    overflow: hidden;
+    font-size: 68px;
+    font-weight: 600;
+  }
+  .digit .strip {
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+  }
+  .digit .strip b {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 68px;
+    font-weight: inherit;
+  }
+
+  .sep {
+    display: inline-flex;
+    align-items: flex-end;
+    height: 68px;
+    font-size: 68px;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    color: hsl(220 12% 72%);
+    padding: 0 1px;
+  }
+
+  .delta {
+    position: absolute;
+    top: 2px;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-strong);
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .delta svg { width: 12px; height: 12px; }
+  .delta.fire {
+    animation: floatUp 1.15s var(--ease) forwards;
+  }
+  @keyframes floatUp {
+    0%   { opacity: 0; transform: translateY(8px) scale(0.9); }
+    18%  { opacity: 1; transform: translateY(0) scale(1); }
+    70%  { opacity: 1; transform: translateY(-14px) scale(1); }
+    100% { opacity: 0; transform: translateY(-26px) scale(0.96); }
+  }
+
+  .spark {
+    margin: 20px 0 0;
+    width: 100%;
+    height: 38px;
+    display: block;
+    overflow: visible;
+  }
+  .spark .fill { fill: url(#sparkFill); opacity: 0.9; }
+  .spark .line {
+    fill: none;
+    stroke: var(--accent-strong);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .spark .head {
+    fill: var(--accent-strong);
+    stroke: #fff;
+    stroke-width: 2;
+  }
+
+  .foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--hairline-soft);
+  }
+
+  .meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .meta .peak {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .meta .peak b { color: var(--ink); font-weight: 600; }
+  .meta .since {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    letter-spacing: 0.01em;
+  }
+
+  .btn {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    padding: 0 17px 0 15px;
+    border: 0;
+    border-radius: var(--radius-btn);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    color: #fff;
+    background: var(--accent-strong);
+    cursor: pointer;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow:
+      inset 0 1px 0 hsl(152 70% 60% / 0.5),
+      0 1px 2px rgba(16, 60, 40, 0.20),
+      0 8px 18px -8px rgba(16, 80, 52, 0.5);
+    transition:
+      transform 0.24s var(--ease),
+      box-shadow 0.32s var(--ease),
+      background-color 0.3s var(--ease-soft);
+  }
+  .btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, hsl(152 60% 46%), hsl(157 64% 32%));
+    transition: opacity 0.3s var(--ease-soft);
+  }
+  .btn span, .btn svg { position: relative; z-index: 1; }
+  .btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: #fff;
+    stroke-width: 2.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    transition: transform 0.4s var(--ease-spring);
+  }
+  .btn:hover {
+    transform: translateY(-1.5px);
+    background: hsl(157 64% 33%);
+    box-shadow:
+      inset 0 1px 0 hsl(152 70% 62% / 0.6),
+      0 2px 4px rgba(16, 60, 40, 0.22),
+      0 14px 26px -10px rgba(16, 80, 52, 0.55);
+  }
+  .btn:hover::before { opacity: 0; }
+  .btn:hover svg { transform: rotate(90deg); }
+  .btn:active {
+    transform: translateY(0) scale(0.96);
+    box-shadow:
+      inset 0 2px 5px rgba(8, 40, 26, 0.34),
+      0 1px 2px rgba(16, 60, 40, 0.2);
+    transition-duration: 0.06s;
+  }
+  .btn:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px var(--surface),
+      0 0 0 5.5px hsl(152 60% 48%),
+      0 10px 22px -10px rgba(16, 80, 52, 0.5);
+  }
+  .btn.bump { animation: bump 0.42s var(--ease-spring); }
+  @keyframes bump {
+    0%   { transform: scale(0.96); }
+    45%  { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="card" aria-label="Active users right now">
+    <header class="head">
+      <span class="label">
+        <span class="pulse" aria-hidden="true"><i class="ring"></i><i class="core"></i></span>
+        Active now
+      </span>
+      <span class="live-tag">
+        <span class="bars" aria-hidden="true"><span></span><span></span><span></span></span>
+        Live
+      </span>
+    </header>
+
+    <div class="value-zone">
+      <div class="odometer" id="odometer" aria-hidden="true"></div>
+      <span class="delta" id="delta" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        <span id="deltaVal">+0</span>
+      </span>
+    </div>
+
+    <svg class="spark" id="spark" viewBox="0 0 320 38" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="hsl(152 62% 42%)" stop-opacity="0.22" />
+          <stop offset="100%" stop-color="hsl(152 62% 42%)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path class="fill" id="sparkFill2" d="" />
+      <path class="line" id="sparkLine" d="" />
+      <circle class="head" id="sparkHead" r="3" cx="0" cy="19" />
+    </svg>
+
+    <div class="foot">
+      <div class="meta">
+        <span class="peak">Peak today&nbsp;&nbsp;<b id="peak">0</b></span>
+        <span class="since">Updated just now</span>
+      </div>
+      <button class="btn" id="bump" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Add visitors</span>
+      </button>
+    </div>
+
+    <span class="sr-only" id="live" role="status" aria-live="polite"></span>
+  </main>
+
+  <script>
+    (function () {
+      var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      var odo = document.getElementById("odometer");
+      var deltaEl = document.getElementById("delta");
+      var deltaVal = document.getElementById("deltaVal");
+      var peakEl = document.getElementById("peak");
+      var btn = document.getElementById("bump");
+      var live = document.getElementById("live");
+      var sinceEl = document.querySelector(".since");
+
+      var sparkLine = document.getElementById("sparkLine");
+      var sparkFill = document.getElementById("sparkFill2");
+      var sparkHead = document.getElementById("sparkHead");
+
+      var DIGIT_H = 68;
+      var current = 1247;     // displayed value (animated)
+      var target = 1247;      // value we are animating toward
+      var peak = 1247;
+      var history = [];
+      for (var h = 0; h < 28; h++) history.push(1180 + Math.round(Math.random() * 120));
+      history.push(current);
+
+      var cols = [];          // digit-column elements {wrap, strip}
+      var sepPositions = {};
+      var renderedDigits = -1;
+
+      function fmt(n) { return Math.round(n).toLocaleString("en-US"); }
+
+      function buildStrip() {
+        var strip = document.createElement("div");
+        strip.className = "strip";
+        for (var d = 0; d <= 9; d++) {
+          var b = document.createElement("b");
+          b.textContent = d;
+          strip.appendChild(b);
+        }
+        return strip;
+      }
+
+      // Lay out the odometer to fit a given digit count (no commas baked into width math;
+      // we insert separators as their own nodes).
+      function layout(str) {
+        odo.innerHTML = "";
+        cols = [];
+        for (var i = 0; i < str.length; i++) {
+          var ch = str[i];
+          if (ch === ",") {
+            var s = document.createElement("span");
+            s.className = "sep";
+            s.textContent = ",";
+            odo.appendChild(s);
+          } else {
+            var wrap = document.createElement("span");
+            wrap.className = "digit";
+            var strip = buildStrip();
+            wrap.appendChild(strip);
+            odo.appendChild(wrap);
+            cols.push(strip);
+          }
+        }
+      }
+
+      function setDigits(value, animate) {
+        var str = fmt(value);
+        var digitCount = str.replace(/,/g, "").length;
+        if (digitCount !== renderedDigits) {
+          layout(str);
+          renderedDigits = digitCount;
+        }
+        var ci = 0;
+        for (var i = 0; i < str.length; i++) {
+          if (str[i] === ",") continue;
+          var digit = parseInt(str[i], 10);
+          var strip = cols[ci];
+          var y = -digit * DIGIT_H;
+          if (animate && !reduce) {
+            strip.style.transition = "transform 0.62s cubic-bezier(0.22, 1, 0.36, 1)";
+          } else {
+            strip.style.transition = "none";
+          }
+          strip.style.transform = "translateY(" + y + "px)";
+          ci++;
+        }
+      }
+
+      // ----- spark sparkline -----
+      var SW = 320, SH = 38, PAD = 4;
+      function drawSpark() {
+        var n = history.length;
+        var min = Math.min.apply(null, history);
+        var max = Math.max.apply(null, history);
+        var range = Math.max(1, max - min);
+        var pts = [];
+        for (var i = 0; i < n; i++) {
+          var x = (i / (n - 1)) * SW;
+          var y = SH - PAD - ((history[i] - min) / range) * (SH - PAD * 2);
+          pts.push([x, y]);
+        }
+        // smooth path via catmull-rom -> bezier
+        function path(close) {
+          var d = "M " + pts[0][0].toFixed(1) + " " + pts[0][1].toFixed(1);
+          for (var i = 0; i < pts.length - 1; i++) {
+            var p0 = pts[i === 0 ? 0 : i - 1];
+            var p1 = pts[i];
+            var p2 = pts[i + 1];
+            var p3 = pts[i + 2 > pts.length - 1 ? pts.length - 1 : i + 2];
+            var c1x = p1[0] + (p2[0] - p0[0]) / 6;
+            var c1y = p1[1] + (p2[1] - p0[1]) / 6;
+            var c2x = p2[0] - (p3[0] - p1[0]) / 6;
+            var c2y = p2[1] - (p3[1] - p1[1]) / 6;
+            d += " C " + c1x.toFixed(1) + " " + c1y.toFixed(1) + " " +
+                 c2x.toFixed(1) + " " + c2y.toFixed(1) + " " +
+                 p2[0].toFixed(1) + " " + p2[1].toFixed(1);
+          }
+          if (close) d += " L " + SW + " " + SH + " L 0 " + SH + " Z";
+          return d;
+        }
+        sparkLine.setAttribute("d", path(false));
+        sparkFill.setAttribute("d", path(true));
+        var last = pts[pts.length - 1];
+        sparkHead.setAttribute("cx", last[0].toFixed(1));
+        sparkHead.setAttribute("cy", last[1].toFixed(1));
+      }
+
+      // ----- count-up animation engine -----
+      var raf = null;
+      var animStart = 0, animFrom = 0, animTo = 0, animDur = 0;
+      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+      function animateTo(to) {
+        target = to;
+        if (reduce) {
+          current = to;
+          setDigits(current, false);
+          afterSettle();
+          return;
+        }
+        animFrom = current;
+        animTo = to;
+        animStart = performance.now();
+        var diff = Math.abs(to - animFrom);
+        animDur = Math.min(1100, 360 + diff * 7);
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(tick);
+      }
+
+      function tick(now) {
+        var t = Math.min(1, (now - animStart) / animDur);
+        var e = easeOutCubic(t);
+        current = animFrom + (animTo - animFrom) * e;
+        setDigits(current, false);
+        if (t < 1) {
+          raf = requestAnimationFrame(tick);
+        } else {
+          current = animTo;
+          setDigits(current, false);
+          afterSettle();
+        }
+      }
+
+      function afterSettle() {
+        if (current > peak) {
+          peak = Math.round(current);
+          peakEl.textContent = fmt(peak);
+        }
+      }
+
+      // record into history (rolling window) and redraw spark
+      function pushHistory(v) {
+        history.push(Math.round(v));
+        if (history.length > 30) history.shift();
+        drawSpark();
+      }
+
+      function showDelta(amount) {
+        if (reduce) return;
+        deltaVal.textContent = "+" + amount;
+        deltaEl.classList.remove("fire");
+        // force reflow to restart animation
+        void deltaEl.offsetWidth;
+        deltaEl.classList.add("fire");
+      }
+
+      function bump(amount, isUser) {
+        var next = target + amount;
+        showDelta(amount);
+        animateTo(next);
+        pushHistory(next);
+        sinceEl.textContent = "Updated just now";
+        live.textContent = fmt(next) + " active now, up " + amount;
+        if (isUser) {
+          btn.classList.remove("bump");
+          void btn.offsetWidth;
+          btn.classList.add("bump");
+        }
+      }
+
+      btn.addEventListener("click", function () {
+        var amount = 7 + Math.floor(Math.random() * 38);  // 7..44
+        bump(amount, true);
+      });
+
+      // ambient auto-ticks: frequent, smaller, organic jitter (some up, occasional dip)
+      var idleSeconds = 0;
+      function scheduleTick() {
+        var delay = 1400 + Math.random() * 1600;
+        setTimeout(function () {
+          var roll = Math.random();
+          var amount;
+          if (roll < 0.16) {
+            amount = -(1 + Math.floor(Math.random() * 4));   // small dip
+          } else {
+            amount = 1 + Math.floor(Math.random() * 9);      // small rise
+          }
+          if (target + amount < 1) amount = 1;
+          if (amount > 0) showDelta(amount);
+          animateTo(target + amount);
+          pushHistory(target + amount);
+          idleSeconds += Math.round(delay / 1000);
+          sinceEl.textContent = "Updated just now";
+          scheduleTick();
+        }, delay);
+      }
+
+      // boot
+      setDigits(current, false);
+      peakEl.textContent = fmt(peak);
+      drawSpark();
+
+      if (!reduce) {
+        // a gentle reveal: roll up from a slightly lower number on load
+        current = 1180;
+        setDigits(current, false);
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { animateTo(1247); });
+        });
+      }
+
+      scheduleTick();
+    })();
+  </script>
+</body>
+</html>

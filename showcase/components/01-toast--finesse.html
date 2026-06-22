@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Toast notification stack</title>
+<style>
+  :root {
+    /* ---- Motion tokens (the shared contract) ---- */
+    --duration-fast:   150ms;
+    --duration-base:   200ms;
+    --duration-slow:   300ms;
+    --duration-slower: 450ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-out:      cubic-bezier(0.05, 0.7, 0.1, 1);  /* entering / decelerate */
+    --ease-in:       cubic-bezier(0.3, 0, 0.8, 0.15);  /* exiting / accelerate */
+    --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);     /* on-screen reposition */
+
+    /* ---- Surface / color ---- */
+    --surface:        hsl(40 12% 98%);
+    --panel:          hsl(0 0% 100%);
+    --panel-2:        hsl(40 14% 99%);
+
+    /* near-black, never #000 — three text tiers */
+    --text-primary:   hsl(220 14% 14%);
+    --text-secondary: hsl(220 9% 38%);
+    --text-tertiary:  hsl(220 7% 56%);
+
+    --hairline:       hsl(220 14% 90%);
+    --hairline-soft:  hsl(220 16% 93%);
+
+    /* functional accent scales — tint + saturated icon color */
+    --c-success-bg:   hsl(150 60% 95%);
+    --c-success-fg:   hsl(151 55% 34%);
+    --c-info-bg:      hsl(212 90% 96%);
+    --c-info-fg:      hsl(214 80% 50%);
+    --c-warn-bg:      hsl(40 95% 94%);
+    --c-warn-fg:      hsl(33 90% 44%);
+    --c-error-bg:     hsl(2 86% 96%);
+    --c-error-fg:     hsl(2 70% 50%);
+
+    --accent:         hsl(244 64% 58%);
+    --accent-press:   hsl(244 62% 52%);
+    --accent-ring:    hsl(244 80% 66%);
+
+    /* layered, hue-tinted shadow — light from above, never pure black */
+    --shadow-toast:
+      0 1px 1px hsl(220 30% 18% / 0.04),
+      0 4px 8px -2px hsl(220 30% 18% / 0.08),
+      0 12px 24px -6px hsl(220 30% 18% / 0.12);
+    --shadow-btn:
+      0 1px 2px hsl(244 40% 30% / 0.22),
+      0 2px 6px -1px hsl(244 40% 30% / 0.24),
+      inset 0 1px 0 hsl(0 0% 100% / 0.16);
+
+    --radius-toast: 14px;
+    --toast-pad: 14px;
+    --radius-icon: 10px;   /* inner: outer 14 - ~4 visual; kept concentric-aware */
+    --radius-close: 8px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background: var(--surface);
+    color: var(--text-primary);
+    /* subtle vertical wash so the surface reads intentional, not flat #fff */
+    background-image:
+      radial-gradient(120% 80% at 50% -10%, hsl(40 30% 100%) 0%, hsl(40 12% 98%) 55%);
+  }
+
+  .stage {
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 56px 28px;
+  }
+
+  .panel-frame {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    text-align: center;
+  }
+
+  .heading {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 590;
+    letter-spacing: -0.012em;
+    color: var(--text-primary);
+    text-wrap: balance;
+  }
+  .subhead {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    max-width: 30ch;
+    text-wrap: pretty;
+  }
+
+  /* ---------- Trigger button ---------- */
+  .btn {
+    appearance: none;
+    border: 0;
+    margin: 0;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    /* optical: a hair less padding on the icon side */
+    padding: 11px 18px 11px 15px;
+    font: inherit;
+    font-size: 14.5px;
+    font-weight: 560;
+    letter-spacing: -0.006em;
+    color: hsl(0 0% 100%);
+    background: linear-gradient(180deg, hsl(244 64% 61%), var(--accent));
+    border-radius: 11px;
+    cursor: pointer;
+    box-shadow: var(--shadow-btn);
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      filter    var(--duration-fast) var(--ease-standard);
+  }
+  .btn__icon {
+    width: 17px; height: 17px;
+    flex: none;
+    display: block;
+  }
+  .btn__count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    min-width: 1.2em;
+    padding: 1px 6px;
+    margin-left: 2px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: hsl(0 0% 100%);
+    background: hsl(0 0% 100% / 0.18);
+    /* count appears only when > 0 */
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover {
+      filter: brightness(1.05);
+      box-shadow:
+        0 2px 4px hsl(244 40% 30% / 0.24),
+        0 6px 14px -2px hsl(244 40% 30% / 0.30),
+        inset 0 1px 0 hsl(0 0% 100% / 0.18);
+    }
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--accent-ring),
+      var(--shadow-btn);
+  }
+
+  .hint {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.002em;
+  }
+  .hint kbd {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+
+  /* ---------- Toast region (bottom-right corner of the iframe) ---------- */
+  .toast-region {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    width: 340px;
+    max-width: calc(100vw - 36px);
+    /* the region itself is non-interactive; toasts opt back in */
+    pointer-events: none;
+    z-index: 50;
+  }
+  /* the list is a positioning context; toasts stack via absolute + translateY */
+  .toast-list {
+    position: relative;
+    width: 100%;
+  }
+
+  .toast {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    pointer-events: auto;
+    transform-origin: bottom center;
+    will-change: transform, opacity;
+    /* base hidden state for the entrance */
+    opacity: 0;
+    /* JS sets --y (stack offset) and --s (scale of peeked cards) */
+    --y: 0px;
+    --s: 1;
+    --lift: 14px;   /* enter from 14px below its resting slot */
+    transform: translate3d(0, calc(var(--y) + var(--lift)), 0) scale(var(--s));
+    transition:
+      transform var(--duration-slow) var(--ease-out),
+      opacity   var(--duration-base) var(--ease-out);
+  }
+  .toast[data-mounted="true"] {
+    opacity: 1;
+    --lift: 0px;
+  }
+  /* peeked (non-front) toasts are dimmed slightly so the front reads as focus */
+  .toast[data-depth="1"] .toast__card { filter: brightness(0.985); }
+  .toast[data-depth="2"] .toast__card { filter: brightness(0.97); }
+
+  .toast[data-removing="true"] {
+    opacity: 0;
+    /* exit: drift a small fixed distance toward where it lives (down/right corner),
+       faster + accelerate-away easing */
+    transform: translate3d(8px, calc(var(--y) + 12px), 0) scale(0.98);
+    transition:
+      transform var(--duration-base) var(--ease-in),
+      opacity   var(--duration-fast) var(--ease-in);
+  }
+
+  .toast__card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "icon body close";
+    gap: 11px;
+    align-items: start;
+    padding: var(--toast-pad);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border: 1px solid var(--hairline-soft);
+    border-radius: var(--radius-toast);
+    box-shadow: var(--shadow-toast);
+    overflow: hidden;
+    transition: filter var(--duration-base) var(--ease-standard);
+  }
+
+  /* icon chip — concentric: outer card 14px, pad 14px would be too round;
+     chip radius 10px reads as nested inside the same family */
+  .toast__icon {
+    grid-area: icon;
+    width: 30px; height: 30px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-icon);
+    margin-top: 1px;          /* optical: align chip with cap height of title */
+  }
+  .toast__icon svg { width: 17px; height: 17px; display: block; }
+
+  .toast--success .toast__icon { background: var(--c-success-bg); color: var(--c-success-fg); }
+  .toast--info    .toast__icon { background: var(--c-info-bg);    color: var(--c-info-fg); }
+  .toast--warn    .toast__icon { background: var(--c-warn-bg);    color: var(--c-warn-fg); }
+  .toast--error   .toast__icon { background: var(--c-error-bg);   color: var(--c-error-fg); }
+
+  .toast__body {
+    grid-area: body;
+    min-width: 0;             /* allow ellipsis inside grid */
+    padding-top: 0.5px;
+  }
+  .toast__title {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.006em;
+    color: var(--text-primary);
+  }
+  .toast__msg {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    /* one line, ellipsis */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* close (x) — generous 32px hit target, extended by a pseudo for ≥40px touch */
+  .toast__close {
+    grid-area: close;
+    position: relative;
+    width: 26px; height: 26px;
+    margin: -3px -3px 0 0;     /* pull into the padding, optical balance */
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 0;
+    padding: 0;
+    border-radius: var(--radius-close);
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+  .toast__close::before {
+    /* invisible extended hit area → ~44px */
+    content: "";
+    position: absolute;
+    inset: -9px;
+  }
+  .toast__close svg { width: 15px; height: 15px; display: block; }
+  @media (hover: hover) and (pointer: fine) {
+    .toast__close:hover { background: var(--hairline-soft); color: var(--text-primary); }
+  }
+  .toast__close:active { transform: scale(0.92); }
+  .toast__close:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent-ring);
+  }
+
+  /* auto-dismiss progress hairline — depletes left→right, linear (continuous) */
+  .toast__progress {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2.5px;
+    border-radius: 0 0 var(--radius-toast) var(--radius-toast);
+    transform-origin: left center;
+    transform: scaleX(var(--p, 1));
+    opacity: 0.55;
+  }
+  .toast--success .toast__progress { background: var(--c-success-fg); }
+  .toast--info    .toast__progress { background: var(--c-info-fg); }
+  .toast--warn    .toast__progress { background: var(--c-warn-fg); }
+  .toast--error   .toast__progress { background: var(--c-error-fg); }
+
+  /* hairline progress visible only on the front toast (others are paused/peeked) */
+  .toast[data-depth="0"] .toast__progress { opacity: 0.5; }
+  .toast:not([data-depth="0"]) .toast__progress { opacity: 0; }
+
+  /* reduced-motion: substitute movement with a plain opacity fade, no travel/scale */
+  @media (prefers-reduced-motion: reduce) {
+    .toast {
+      transform: translate3d(0, var(--y), 0);
+      transition: opacity var(--duration-fast) linear;
+    }
+    .toast[data-mounted="true"] { opacity: 1; }
+    .toast[data-removing="true"] {
+      transform: translate3d(0, var(--y), 0);
+      transition: opacity var(--duration-fast) linear;
+    }
+    .toast[data-depth="1"] .toast__card,
+    .toast[data-depth="2"] .toast__card { filter: none; }
+    .btn:active { transform: none; }
+  }
+
+  /* forced-colors / high-contrast: give cards a real boundary the shadow can't provide */
+  @media (forced-colors: active) {
+    .toast__card { border: 1px solid CanvasText; }
+    .btn:focus-visible,
+    .toast__close:focus-visible { outline: 2px solid Highlight; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="panel-frame">
+      <div>
+        <h1 class="heading">Notifications</h1>
+        <p class="subhead">Push a message onto the stack. They settle in the corner, ease apart on hover, and clear themselves after a few seconds.</p>
+      </div>
+
+      <button id="notify" class="btn" type="button" aria-describedby="notify-hint">
+        <svg class="btn__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 4.5a5 5 0 0 0-5 5c0 3.5-1.2 5-2 5.8-.4.4-.1 1.2.5 1.2h13c.6 0 .9-.8.5-1.2-.8-.8-2-2.3-2-5.8a5 5 0 0 0-5-5Z"
+                stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M10.2 20a2 2 0 0 0 3.6 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Show notification</span>
+        <span class="btn__count" id="count" hidden aria-hidden="true">0</span>
+      </button>
+
+      <p class="hint" id="notify-hint">Press <kbd>N</kbd> to fire one. Hover the stack to fan it out.</p>
+    </div>
+  </div>
+
+  <!-- live region: out-of-context status, announced politely -->
+  <div class="toast-region" aria-live="polite" aria-relevant="additions" role="region" aria-label="Notifications">
+    <div class="toast-list" id="toast-list"></div>
+  </div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const listEl  = document.getElementById("toast-list");
+    const btn      = document.getElementById("notify");
+    const countEl  = document.getElementById("count");
+    const reduce   = matchMedia("(prefers-reduced-motion: reduce)");
+
+    // ---- config ----
+    const LIFETIME   = 4000;   // auto-dismiss after ~4s
+    const MAX_VISIBLE = 3;     // toasts shown full; older ones peek then drop off
+    const GAP         = 12;    // px between stacked card tops when expanded
+    const PEEK        = 12;    // px each collapsed card peeks above the one in front
+    const PEEK_SCALE  = 0.05;  // scale falloff per depth when collapsed
+
+    let seq = 0;             // advances once per toast — drives the content cycle
+    let idCounter = 0;       // unique record id, never reused
+    let total = 0;            // lifetime count for the badge
+    const toasts = [];        // newest at end; visually newest sits in front (bottom)
+    let expanded = false;     // hover/focus fans the stack out
+
+    // ---- icon set (inline SVG, stroke-based, 24-grid) ----
+    const ICONS = {
+      success: '<path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+      info:    '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.15" fill="currentColor"/>',
+      warn:    '<path d="M12 4.8 21 19.5H3L12 4.8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10.2v3.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.6" r="1.05" fill="currentColor"/>',
+      error:   '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+    };
+
+    const CLOSE_SVG =
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
+
+    // sample content pool — varied so rapid clicks read as distinct events
+    const POOL = [
+      ["success", "Changes saved",        "Your draft is up to date across devices."],
+      ["info",    "New comment",          "Priya replied to your thread in Roadmap."],
+      ["success", "Deployment live",      "build #4127 shipped to production."],
+      ["warn",    "Storage almost full",  "You've used 92% of your workspace quota."],
+      ["info",    "Invite sent",          "We emailed an invitation to the new seat."],
+      ["error",   "Upload failed",        "report.pdf couldn't be processed — retry?"],
+      ["success", "Payment received",     "Invoice #0912 was marked as paid."],
+      ["info",    "Sync complete",        "318 items reconciled with the server."],
+    ];
+
+    function nextContent() {
+      // cycle the pool deterministically so the demo feels authored, not random
+      return POOL[seq % POOL.length];
+    }
+
+    function updateBadge() {
+      if (total > 0) {
+        countEl.hidden = false;
+        countEl.textContent = String(total);
+      } else {
+        countEl.hidden = true;
+      }
+    }
+
+    // ---- build one toast element ----
+    function createToast(kind, title, message) {
+      const t = document.createElement("article");
+      t.className = "toast toast--" + kind;
+      t.setAttribute("role", "status");
+      t.setAttribute("data-mounted", "false");
+
+      t.innerHTML =
+        '<div class="toast__card">' +
+          '<span class="toast__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none">' + ICONS[kind] + '</svg></span>' +
+          '<div class="toast__body">' +
+            '<p class="toast__title"></p>' +
+            '<p class="toast__msg"></p>' +
+          '</div>' +
+          '<button class="toast__close" type="button" aria-label="Dismiss notification">' + CLOSE_SVG + '</button>' +
+          '<span class="toast__progress" aria-hidden="true"></span>' +
+        '</div>';
+
+      // textContent (not innerHTML) so content is never an injection surface
+      t.querySelector(".toast__title").textContent = title;
+      t.querySelector(".toast__msg").textContent = message;
+
+      return t;
+    }
+
+    // ---- layout: position every toast via transform only (no reflow) ----
+    function layout() {
+      // visually-newest is last in `toasts`; it sits at the front (bottom, y=0)
+      const n = toasts.length;
+      for (let vi = 0; vi < n; vi++) {
+        const rec = toasts[n - 1 - vi];   // vi=0 => front
+        const el = rec.el;
+        const removing = el.getAttribute("data-removing") === "true";
+
+        // depth (0 front) clamped for styling hooks
+        el.setAttribute("data-depth", String(Math.min(vi, 2)));
+
+        // toasts beyond MAX_VISIBLE fade out of the stack
+        if (vi >= MAX_VISIBLE && !removing) {
+          el.style.setProperty("--s", "1");
+          el.style.setProperty("--y", "0px");
+          el.style.opacity = "0";
+          el.style.pointerEvents = "none";
+          continue;
+        }
+        if (!removing) {
+          el.style.opacity = "";
+          el.style.pointerEvents = "";
+        }
+
+        let y, s;
+        if (expanded) {
+          // fanned out: each card lifts by its full measured height + gap
+          let offset = 0;
+          for (let k = 0; k < vi; k++) {
+            const r = toasts[n - 1 - k];
+            offset += (r.height || 64) + GAP;
+          }
+          y = -offset;
+          s = 1;
+        } else {
+          // collapsed: peek a few px, scale down with depth
+          y = -(vi * PEEK);
+          s = 1 - vi * PEEK_SCALE;
+        }
+
+        if (!removing) {
+          el.style.setProperty("--y", y.toFixed(2) + "px");
+          el.style.setProperty("--s", s.toFixed(3));
+        } else {
+          // keep removing toasts anchored where they were for a clean exit
+          el.style.setProperty("--y", (rec._lastY ?? y).toFixed(2) + "px");
+        }
+        rec._lastY = y;
+      }
+
+      // size the region so the fixed stack reserves enough height when expanded
+      // (purely cosmetic for the iframe; no effect on absolute children)
+    }
+
+    // ---- lifecycle ----
+    function addToast() {
+      const [kind, title, message] = nextContent();
+      seq++;
+      total++;
+      updateBadge();
+
+      const el = createToast(kind, title, message);
+      const rec = {
+        id: ++idCounter,
+        el,
+        kind,
+        height: 64,
+        timer: null,
+        startedAt: 0,
+        remaining: LIFETIME,
+        paused: false,
+        _lastY: 0,
+      };
+
+      // wire interactions — dismiss on release (native click), so a user can
+      // slide off the x before lifting to cancel
+      el.querySelector(".toast__close").addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeToast(rec, /*viaUser*/ true);
+      });
+
+      toasts.push(rec);
+      listEl.appendChild(el);
+
+      // measure natural height for accurate expanded layout
+      rec.height = el.querySelector(".toast__card").offsetHeight || 64;
+
+      // initial layout in the hidden/lifted state, then flip to mounted next frame
+      layout();
+      // force a style flush so the entrance transition runs from the lifted state
+      // eslint-disable-next-line no-unused-expressions
+      el.offsetHeight;
+      requestAnimationFrame(() => {
+        el.setAttribute("data-mounted", "true");
+      });
+
+      startTimer(rec);
+      // re-layout so older toasts restack (interruptible transform retargets mid-flight)
+      layout();
+    }
+
+    function removeToast(rec, viaUser) {
+      if (rec._removed) return;
+      rec._removed = true;
+      clearTimeout(rec.timer);
+
+      const el = rec.el;
+      el.setAttribute("data-removing", "true");
+      el.style.pointerEvents = "none";
+
+      const done = () => {
+        el.removeEventListener("transitionend", onEnd);
+        clearTimeout(fallback);
+        const i = toasts.indexOf(rec);
+        if (i !== -1) toasts.splice(i, 1);
+        if (el.parentNode) el.parentNode.removeChild(el);
+        layout();
+      };
+      const onEnd = (e) => {
+        if (e.target === el && (e.propertyName === "opacity" || e.propertyName === "transform")) done();
+      };
+      el.addEventListener("transitionend", onEnd);
+      // safety net if transitionend doesn't fire (e.g. reduced-motion edge)
+      const fallback = setTimeout(done, 400);
+
+      // collapse the gap left behind immediately so the rest restacks smoothly
+      layout();
+    }
+
+    // ---- timers + progress hairline ----
+    function startTimer(rec) {
+      rec.startedAt = performance.now();
+      rec.paused = false;
+      animateProgress(rec);
+      rec.timer = setTimeout(() => removeToast(rec, false), rec.remaining);
+    }
+
+    function animateProgress(rec) {
+      const bar = rec.el.querySelector(".toast__progress");
+      if (!bar) return;
+      if (reduce.matches) {
+        // no animated depletion under reduced motion — static, meaning kept via timer
+        bar.style.transition = "none";
+        bar.style.setProperty("--p", "1");
+        return;
+      }
+      const elapsed = LIFETIME - rec.remaining;
+      const frac = Math.max(0, Math.min(1, 1 - elapsed / LIFETIME));
+      // set current, then transition to 0 over the remaining time, linearly
+      bar.style.transition = "none";
+      bar.style.setProperty("--p", String(frac));
+      // flush
+      // eslint-disable-next-line no-unused-expressions
+      bar.offsetHeight;
+      bar.style.transition = "transform " + rec.remaining + "ms linear";
+      bar.style.setProperty("--p", "0");
+    }
+
+    function pauseTimer(rec) {
+      if (rec.paused || rec._removed) return;
+      rec.paused = true;
+      clearTimeout(rec.timer);
+      const elapsed = performance.now() - rec.startedAt;
+      rec.remaining = Math.max(0, rec.remaining - elapsed);
+      // freeze the hairline at its current width
+      const bar = rec.el.querySelector(".toast__progress");
+      if (bar && !reduce.matches) {
+        const cs = getComputedStyle(bar).transform;
+        bar.style.transition = "none";
+        // read current scaleX from the matrix and pin it
+        let sx = 1;
+        if (cs && cs !== "none") {
+          const m = cs.match(/matrix\(([^)]+)\)/);
+          if (m) sx = parseFloat(m[1].split(",")[0]) || 1;
+        }
+        bar.style.setProperty("--p", String(sx));
+      }
+    }
+
+    function resumeTimer(rec) {
+      if (!rec.paused || rec._removed) return;
+      startTimer(rec);
+    }
+
+    function pauseAll() { toasts.forEach(pauseTimer); }
+    function resumeAll() { toasts.forEach(resumeTimer); }
+
+    // ---- expand-on-hover / focus (fan the stack out) ----
+    function setExpanded(v) {
+      if (expanded === v) return;
+      expanded = v;
+      if (v) pauseAll(); else resumeAll();
+      layout();
+    }
+
+    listEl.addEventListener("pointerenter", () => setExpanded(true));
+    listEl.addEventListener("pointerleave", () => setExpanded(false));
+    listEl.addEventListener("focusin",  () => setExpanded(true));
+    listEl.addEventListener("focusout", (e) => {
+      // collapse only when focus leaves the whole stack
+      if (!listEl.contains(e.relatedTarget)) setExpanded(false);
+    });
+
+    // ---- trigger ----
+    btn.addEventListener("click", addToast);
+
+    // keyboard shortcut: N fires a toast (ignored while typing)
+    document.addEventListener("keydown", (e) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        addToast();
+        btn.focus({ preventScroll: true });
+      }
+      // Escape clears the whole stack
+      if (e.key === "Escape" && toasts.length) {
+        e.preventDefault();
+        // dismiss front-to-back with a tiny stagger so it reads as a sweep
+        const snapshot = toasts.slice();
+        snapshot.reverse().forEach((rec, i) => {
+          setTimeout(() => removeToast(rec, true), reduce.matches ? 0 : i * 55);
+        });
+      }
+    });
+
+    // keep expanded layout correct if the window resizes
+    addEventListener("resize", () => { if (expanded) layout(); });
+
+    // seed nothing — the stack starts empty (designed empty state: no clutter).
+  })();
+  </script>
+</body>
+</html>

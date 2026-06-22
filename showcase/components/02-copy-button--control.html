@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Copy command</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --card: hsl(0 0% 100%);
+    --ink: hsl(220 14% 16%);
+    --ink-soft: hsl(220 9% 42%);
+    --ink-faint: hsl(220 8% 58%);
+    --mono: hsl(222 16% 28%);
+    --prompt: hsl(220 8% 64%);
+    --hair: hsl(220 14% 90%);
+    --hair-strong: hsl(220 13% 84%);
+    --btn-face: hsl(0 0% 100%);
+    --btn-face-hover: hsl(220 20% 98.5%);
+    --btn-ink: hsl(220 13% 24%);
+    --accent: hsl(158 64% 40%);
+    --accent-soft: hsl(158 55% 94%);
+    --accent-ink: hsl(160 70% 26%);
+    --focus: hsl(221 83% 60%);
+    --shadow-1: 0 1px 2px hsl(220 20% 20% / 0.04);
+    --shadow-card: 0 1px 1px hsl(220 20% 20% / 0.03), 0 6px 16px hsl(220 24% 22% / 0.06), 0 24px 48px hsl(220 24% 22% / 0.05);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 28px;
+    background-color: var(--surface);
+    background-image: radial-gradient(hsl(220 14% 88% / 0.55) 0.6px, transparent 0.6px);
+    background-size: 22px 22px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 412px;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 2px 12px;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .eyebrow::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--hair), transparent);
+  }
+  .eyebrow .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .snippet {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    padding: 9px 9px 9px 16px;
+    background: var(--card);
+    border: 1px solid var(--hair);
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .code {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .code .glyph {
+    flex: none;
+    color: var(--prompt);
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    font-weight: 600;
+    user-select: none;
+    transform: translateY(0.5px);
+  }
+
+  .code code {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.4;
+    letter-spacing: -0.1px;
+    color: var(--mono);
+  }
+  .code code .cmd { color: var(--ink); font-weight: 600; }
+  .code code .arg { color: hsl(221 60% 48%); }
+
+  .divider {
+    flex: none;
+    width: 1px;
+    align-self: stretch;
+    margin: 2px 0;
+    background: var(--hair);
+  }
+
+  .copy-btn {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 38px;
+    min-width: 102px;
+    padding: 0 15px 0 13px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 550;
+    line-height: 1;
+    letter-spacing: 0.1px;
+    color: var(--btn-ink);
+    background: var(--btn-face);
+    border: 1px solid var(--hair-strong);
+    border-radius: 9px;
+    cursor: pointer;
+    box-shadow: var(--shadow-1);
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color 0.18s var(--ease-out),
+      border-color 0.18s var(--ease-out),
+      color 0.18s var(--ease-out),
+      box-shadow 0.18s var(--ease-out),
+      transform 0.12s var(--ease-out);
+  }
+
+  .copy-btn:hover {
+    background: var(--btn-face-hover);
+    border-color: hsl(220 13% 78%);
+    box-shadow: 0 1px 2px hsl(220 20% 20% / 0.05), 0 4px 10px hsl(220 24% 22% / 0.06);
+  }
+
+  .copy-btn:active {
+    transform: translateY(0.5px) scale(0.985);
+    box-shadow: inset 0 1px 2px hsl(220 20% 20% / 0.06);
+    transition-duration: 0.05s;
+  }
+
+  .copy-btn:focus-visible {
+    border-color: var(--focus);
+    box-shadow: 0 0 0 3px hsl(221 83% 60% / 0.22);
+  }
+
+  .copy-btn.is-copied {
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    border-color: hsl(158 50% 80%);
+    box-shadow: 0 1px 2px hsl(158 40% 30% / 0.06);
+  }
+  .copy-btn.is-copied:hover {
+    background: hsl(158 52% 92%);
+    border-color: hsl(158 50% 74%);
+  }
+
+  .label-track {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 1em;
+  }
+  .label {
+    display: inline-flex;
+    align-items: center;
+    transition: opacity 0.2s var(--ease-out), transform 0.3s var(--ease-spring);
+  }
+  .label.label-done {
+    position: absolute;
+    left: 0;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  .copy-btn.is-copied .label-idle {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+  .copy-btn.is-copied .label-done {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .icon-track {
+    position: relative;
+    flex: none;
+    width: 16px;
+    height: 16px;
+  }
+  .icon-track svg {
+    position: absolute;
+    inset: 0;
+    width: 16px;
+    height: 16px;
+    display: block;
+  }
+  .icon-copy {
+    transition: opacity 0.18s var(--ease-out), transform 0.32s var(--ease-spring);
+  }
+  .icon-check {
+    opacity: 0;
+    transform: scale(0.5) rotate(-12deg);
+    transition: opacity 0.18s var(--ease-out), transform 0.4s var(--ease-spring);
+  }
+  .copy-btn.is-copied .icon-copy {
+    opacity: 0;
+    transform: scale(0.5) rotate(10deg);
+  }
+  .copy-btn.is-copied .icon-check {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+
+  .icon-check .tick {
+    stroke-dasharray: 22;
+    stroke-dashoffset: 22;
+  }
+  .copy-btn.is-copied .icon-check .tick {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.34s var(--ease-out) 0.08s;
+  }
+
+  .hint {
+    margin: 14px 4px 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-faint);
+    text-align: center;
+    transition: color 0.2s var(--ease-out);
+  }
+  .hint kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    background: hsl(220 16% 96%);
+    border: 1px solid var(--hair-strong);
+    border-bottom-width: 1.5px;
+    border-radius: 5px;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; }
+    .icon-check .tick { transition: none; stroke-dashoffset: 0; }
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Quick install</div>
+
+    <div class="snippet">
+      <div class="code">
+        <span class="glyph" aria-hidden="true">$</span>
+        <code id="snippet-code"><span class="cmd">npx skills add</span> <span class="arg">arjunlohan/finesse</span></code>
+      </div>
+      <span class="divider" aria-hidden="true"></span>
+      <button class="copy-btn" id="copyBtn" type="button" aria-label="Copy command to clipboard">
+        <span class="icon-track" aria-hidden="true">
+          <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="11" height="11" rx="2.5"></rect>
+            <path d="M5 15.5A2.5 2.5 0 0 1 3.5 13.2V5A2.5 2.5 0 0 1 6 2.5h8.2A2.5 2.5 0 0 1 16 4"></path>
+          </svg>
+          <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path class="tick" d="M4.5 12.5l4.6 4.5L19.5 7"></path>
+          </svg>
+        </span>
+        <span class="label-track">
+          <span class="label label-idle">Copy</span>
+          <span class="label label-done">Copied</span>
+        </span>
+      </button>
+    </div>
+
+    <p class="hint" id="hint">Press <kbd>Enter</kbd> or click to copy the command</p>
+    <span class="sr-only" id="live" role="status" aria-live="polite"></span>
+  </main>
+
+  <script>
+    (function () {
+      var btn = document.getElementById("copyBtn");
+      var live = document.getElementById("live");
+      var hint = document.getElementById("hint");
+      var codeText = "npx skills add arjunlohan/finesse";
+      var REVERT_MS = 1200;
+      var timer = null;
+      var defaultHint = hint.textContent;
+
+      async function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            await navigator.clipboard.writeText(text);
+            return true;
+          } catch (e) { /* fall through */ }
+        }
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "absolute";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function handleCopy() {
+        var ok = await copyText(codeText);
+
+        if (!ok) {
+          live.textContent = "Copy failed. Select the text manually.";
+          hint.textContent = "Couldn’t access the clipboard — select and copy manually";
+          return;
+        }
+
+        btn.classList.add("is-copied");
+        btn.setAttribute("aria-label", "Command copied to clipboard");
+        live.textContent = "Copied to clipboard";
+        hint.textContent = "Copied to your clipboard";
+
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function () {
+          btn.classList.remove("is-copied");
+          btn.setAttribute("aria-label", "Copy command to clipboard");
+          hint.textContent = defaultHint;
+          live.textContent = "";
+        }, REVERT_MS);
+      }
+
+      btn.addEventListener("click", handleCopy);
+    })();
+  </script>
+</body>
+</html>

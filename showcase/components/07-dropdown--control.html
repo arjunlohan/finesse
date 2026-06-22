@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Options menu</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --menu-bg: #ffffff;
+    --text: hsl(220 9% 18%);
+    --text-soft: hsl(220 7% 42%);
+    --text-faint: hsl(220 6% 58%);
+    --border: hsl(220 14% 90%);
+    --border-strong: hsl(220 13% 84%);
+    --hover: hsl(220 18% 96%);
+    --hover-strong: hsl(220 20% 94%);
+    --danger: hsl(2 72% 52%);
+    --danger-bg: hsl(2 78% 96%);
+    --danger-text: hsl(2 64% 45%);
+    --ring: hsl(221 83% 60%);
+    --shadow:
+      0 0 0 1px hsl(220 14% 90% / 0.7),
+      0 1px 2px hsl(220 30% 12% / 0.04),
+      0 8px 18px -6px hsl(220 30% 12% / 0.12),
+      0 20px 40px -12px hsl(220 30% 12% / 0.16);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--surface);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: grid;
+    place-items: center;
+    padding: 48px 24px;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .hint {
+    font-size: 12.5px;
+    letter-spacing: 0.01em;
+    color: var(--text-faint);
+    user-select: none;
+  }
+  .hint kbd {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-soft);
+    background: #fff;
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 1.5px;
+    border-radius: 5px;
+    padding: 1px 5px;
+    margin: 0 1px;
+  }
+
+  .menu-root {
+    position: relative;
+  }
+
+  /* ---- Trigger button ---- */
+  .trigger {
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text);
+    background: #fff;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 0 13px 0 15px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    user-select: none;
+    box-shadow:
+      0 1px 2px hsl(220 30% 12% / 0.05),
+      0 1px 0 0 hsl(0 0% 100% / 0.6) inset;
+    transition:
+      background .16s ease,
+      border-color .16s ease,
+      box-shadow .16s ease,
+      transform .12s cubic-bezier(.2,.8,.3,1);
+  }
+  .trigger:hover {
+    background: hsl(220 20% 99%);
+    border-color: hsl(220 13% 78%);
+  }
+  .trigger:active {
+    transform: translateY(0.5px) scale(0.985);
+    background: var(--hover);
+  }
+  .trigger:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow:
+      0 0 0 3px hsl(221 83% 60% / 0.28),
+      0 1px 2px hsl(220 30% 12% / 0.05);
+  }
+  .trigger[aria-expanded="true"] {
+    background: var(--hover);
+    border-color: hsl(220 13% 76%);
+  }
+  .trigger .chev {
+    color: var(--text-faint);
+    transition: transform .26s cubic-bezier(.34,1.4,.5,1), color .16s ease;
+  }
+  .trigger:hover .chev { color: var(--text-soft); }
+  .trigger[aria-expanded="true"] .chev {
+    transform: rotate(180deg);
+    color: var(--text-soft);
+  }
+
+  /* ---- Menu panel ---- */
+  .menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 232px;
+    background: var(--menu-bg);
+    border-radius: 13px;
+    padding: 6px;
+    box-shadow: var(--shadow);
+    z-index: 10;
+    transform-origin: top left;
+
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      opacity .15s ease,
+      transform .19s cubic-bezier(.2,.85,.32,1),
+      visibility .19s;
+  }
+  .menu.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+    visibility: visible;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .menu, .trigger, .trigger .chev, .item { transition: none !important; }
+  }
+
+  .menu-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding: 7px 10px 5px;
+    user-select: none;
+  }
+
+  /* ---- Items ---- */
+  .item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 450;
+    color: var(--text);
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: background .12s ease, color .12s ease;
+  }
+  .item .ico {
+    flex: none;
+    width: 17px;
+    height: 17px;
+    color: var(--text-soft);
+    transition: color .12s ease;
+  }
+  .item .txt { flex: 1 1 auto; }
+  .item .shortcut {
+    font-size: 11.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* hover + keyboard-active share one state via .active */
+  .item.active {
+    background: var(--hover-strong);
+  }
+  .item.active .ico { color: var(--text); }
+
+  .item:active { background: hsl(220 22% 91%); }
+
+  .item.danger { color: var(--danger-text); }
+  .item.danger .ico { color: var(--danger); }
+  .item.danger.active {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
+  .item.danger.active .ico { color: var(--danger); }
+  .item.danger:active { background: hsl(2 70% 92%); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 5px 6px;
+  }
+
+  /* selected check (last action feedback) */
+  .item .check {
+    position: absolute;
+    right: 11px;
+    opacity: 0;
+    transform: scale(0.6);
+    color: var(--text-soft);
+    transition: opacity .16s ease, transform .2s cubic-bezier(.34,1.5,.5,1);
+  }
+  .item.chosen .check { opacity: 1; transform: scale(1); }
+  .item.chosen .shortcut { opacity: 0; }
+
+  .status {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-soft);
+    min-height: 18px;
+    text-align: center;
+    transition: opacity .2s ease;
+  }
+  .status b { font-weight: 500; color: var(--text); }
+  .status.danger b { color: var(--danger-text); }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap; border: 0;
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="menu-root">
+      <button id="trigger" class="trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="menu">
+        <span>Options</span>
+        <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      <div id="menu" class="menu" role="menu" aria-labelledby="trigger" tabindex="-1">
+        <div class="menu-label" aria-hidden="true">Actions</div>
+
+        <button class="item" role="menuitem" tabindex="-1" data-label="Edit project">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+          <span class="txt">Edit project</span>
+          <span class="shortcut">⌘E</span>
+          <svg class="check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+
+        <button class="item" role="menuitem" tabindex="-1" data-label="Duplicate">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="11" height="11" rx="2.5" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          <span class="txt">Duplicate</span>
+          <span class="shortcut">⌘D</span>
+          <svg class="check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+
+        <button class="item" role="menuitem" tabindex="-1" data-label="Share link">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+          </svg>
+          <span class="txt">Share link</span>
+          <svg class="check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+
+        <button class="item" role="menuitem" tabindex="-1" data-label="Archive">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="4" rx="1" />
+            <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" />
+            <path d="M10 12h4" />
+          </svg>
+          <span class="txt">Archive</span>
+          <svg class="check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+
+        <div class="divider" role="separator"></div>
+
+        <button class="item danger" role="menuitem" tabindex="-1" data-label="Delete">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6" />
+            <path d="M10 11v6M14 11v6" />
+          </svg>
+          <span class="txt">Delete</span>
+          <svg class="check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+  </div>
+
+<script>
+(function () {
+  const trigger = document.getElementById('trigger');
+  const menu = document.getElementById('menu');
+  const statusEl = document.getElementById('status');
+  const items = Array.from(menu.querySelectorAll('.item'));
+
+  let open = false;
+  let activeIndex = -1;
+  let chosenTimer = null;
+
+  function setActive(i, { scroll = false } = {}) {
+    if (activeIndex >= 0 && items[activeIndex]) {
+      items[activeIndex].classList.remove('active');
+    }
+    activeIndex = i;
+    if (i >= 0 && items[i]) {
+      const el = items[i];
+      el.classList.add('active');
+      el.focus({ preventScroll: !scroll });
+    }
+  }
+
+  function clearActive() {
+    if (activeIndex >= 0 && items[activeIndex]) {
+      items[activeIndex].classList.remove('active');
+    }
+    activeIndex = -1;
+  }
+
+  function openMenu({ viaKeyboard = false } = {}) {
+    if (open) return;
+    open = true;
+    menu.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+    if (viaKeyboard) {
+      setActive(0);
+    } else {
+      clearActive();
+      menu.focus({ preventScroll: true });
+    }
+  }
+
+  function closeMenu({ focusTrigger = true } = {}) {
+    if (!open) return;
+    open = false;
+    menu.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+    clearActive();
+    if (focusTrigger) trigger.focus({ preventScroll: true });
+  }
+
+  function choose(el) {
+    const label = el.dataset.label;
+    const isDanger = el.classList.contains('danger');
+
+    items.forEach(i => i.classList.remove('chosen'));
+    el.classList.add('chosen');
+
+    clearTimeout(chosenTimer);
+    chosenTimer = setTimeout(() => el.classList.remove('chosen'), 1400);
+
+    statusEl.classList.toggle('danger', isDanger);
+    statusEl.innerHTML = isDanger
+      ? '<b>Delete</b> — item moved to trash'
+      : '<b>' + label + '</b> selected';
+
+    setTimeout(() => closeMenu(), 130);
+  }
+
+  trigger.addEventListener('click', () => {
+    open ? closeMenu() : openMenu();
+  });
+
+  trigger.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openMenu({ viaKeyboard: true });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      openMenu();
+      setActive(items.length - 1);
+    }
+  });
+
+  items.forEach((el, i) => {
+    el.addEventListener('click', () => choose(el));
+    el.addEventListener('mouseenter', () => setActive(i));
+    el.addEventListener('mousemove', () => {
+      if (activeIndex !== i) setActive(i);
+    });
+  });
+
+  // Pointer leaving the menu clears the highlight for a calm resting state
+  menu.addEventListener('mouseleave', () => {
+    if (open) { clearActive(); menu.focus({ preventScroll: true }); }
+  });
+
+  menu.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setActive(activeIndex < 0 ? 0 : (activeIndex + 1) % items.length, { scroll: true });
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setActive(activeIndex <= 0 ? items.length - 1 : activeIndex - 1, { scroll: true });
+        break;
+      case 'Home':
+        e.preventDefault();
+        setActive(0, { scroll: true });
+        break;
+      case 'End':
+        e.preventDefault();
+        setActive(items.length - 1, { scroll: true });
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (activeIndex >= 0) choose(items[activeIndex]);
+        break;
+      case 'Tab':
+        closeMenu({ focusTrigger: false });
+        break;
+      case 'Escape':
+        e.preventDefault();
+        closeMenu();
+        break;
+    }
+  });
+
+  document.addEventListener('pointerdown', (e) => {
+    if (open && !menu.contains(e.target) && !trigger.contains(e.target)) {
+      closeMenu({ focusTrigger: false });
+    }
+  });
+
+  window.addEventListener('blur', () => closeMenu({ focusTrigger: false }));
+})();
+</script>
+</body>
+</html>

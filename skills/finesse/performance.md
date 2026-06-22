@@ -28,7 +28,7 @@ The property you animate decides where you *enter* this pipeline, and that decid
 
 The crucial fact: **`transform` and `opacity` can be handled at the Composite step alone**, and compositing runs on a **separate compositor thread, independently of the main thread.** So even when the main thread is jammed — running your JS, parsing, garbage-collecting, handling a slow event — a transform/opacity animation keeps ticking at full framerate on the GPU. Layout- and paint-triggering animations cannot; they're stuck in line behind whatever the main thread is doing, and they jank. `filter` is GPU-accelerated but a **paint-stage** effect — cheap for a small blur, increasingly expensive as the radius grows; not truly compositor-only like `transform`/`opacity`.
 
-web.dev's canonical measurement makes the gap concrete: animating `top`/`left` (which triggers layout) can drop **~50% of frames**, while animating the equivalent motion with `transform` drops **~1% of frames**.
+A canonical measurement makes the gap concrete: animating `top`/`left` (which triggers layout) can drop **~50% of frames**, while animating the equivalent motion with `transform` drops **~1% of frames**.
 
 ```css
 /* BAD — animates `left`, triggers Layout every frame, ~50% frames dropped */
@@ -131,7 +131,7 @@ But it is a hint with real costs, and it's widely misused:
 - **It only helps GPU-compositable properties.** Hinting `will-change: top` or `will-change: background` does nothing useful, because those can't be lifted to the compositor anyway.
 - **`will-change: all` is never correct** — it asks the browser to prepare for everything, which it can't, so it just wastes resources.
 
-web.dev's rule, stated precisely: **only set `will-change` if the animation may begin within ~200ms, and remove it once the animation is done.** Apply it just-in-time (on `pointerenter`, on focus, right before you trigger), and clear it on transition end.
+The rule, stated precisely: **only set `will-change` if the animation may begin within ~200ms, and remove it once the animation is done.** Apply it just-in-time (on `pointerenter`, on focus, right before you trigger), and clear it on transition end.
 
 | Property | GPU-compositable? | `will-change` worth it? |
 | --- | --- | --- |
@@ -164,7 +164,7 @@ If you can't cleanly add/remove it, prefer leaving it off. A momentary first-fra
 
 ## FLIP for layout-change animation
 
-Sometimes the thing that changed *is* layout — an item moves to a new position in a reordered list, a card expands from a grid into a detail view, an element reflows when a sibling appears. You can't animate that with a static `transform` because you don't know the start and end coordinates ahead of time. **FLIP** (Paul Lewis) is the technique: it converts an unavoidable layout change into a cheap compositor-only transform animation.
+Sometimes the thing that changed *is* layout — an item moves to a new position in a reordered list, a card expands from a grid into a detail view, an element reflows when a sibling appears. You can't animate that with a static `transform` because you don't know the start and end coordinates ahead of time. **FLIP** is the technique: it converts an unavoidable layout change into a cheap compositor-only transform animation.
 
 **F**irst · **L**ast · **I**nvert · **P**lay:
 
@@ -215,7 +215,7 @@ Climb only as high as the job needs. Each rung up is more power and more weight 
 | 3 | **Web Animations API** (`element.animate()`) | You need JS control — dynamic values (FLIP deltas), `.cancel()`/`.reverse()`/`.finished`, sequencing, computed keyframes — but still want the engine compositing it. |
 | 4 | **JS animation library** | Orchestration CSS/WAAPI can't express: shared layout transitions, gesture-driven springs, complex timelines, scroll-linked sequences. |
 
-**Stripe's stated ladder is the model:** start at CSS, climb only when you hit a wall, and prefer a small WAAPI-based implementation over a heavyweight library — their animation primitive is on the order of **~5KB** built on the Web Animations API. The point isn't the exact number; it's that they resisted pulling in a large main-thread animation runtime for what the platform already composites for free.
+**A proven ladder is the model:** start at CSS, climb only when you hit a wall, and prefer a small WAAPI-based implementation over a heavyweight library — a good animation primitive is on the order of **~5KB** built on the Web Animations API. The point isn't the exact number; it's resisting a large main-thread animation runtime for what the platform already composites for free.
 
 **The performance reason to prefer WAAPI / compositor-thread libraries over main-thread JS animation:** an animation driven frame-by-frame in JavaScript (a `requestAnimationFrame` loop setting `style.transform` each tick, or older libraries that do so) runs **on the main thread.** The moment the main thread gets busy — a big render, data parsing, a slow handler — those frames stall and the animation janks. CSS transitions, CSS keyframes, and WAAPI animations of `transform`/`opacity` are handed to the **compositor thread** and keep running smoothly through main-thread load. So:
 
@@ -250,7 +250,7 @@ The techniques, in rough order of impact (full treatment in [interaction-states.
 - **Latency hiding.** Use the moments you already own — prefetch on hover/intent, start the request on `pointerdown` instead of `click`, begin the open animation while data loads so the two overlap instead of queue.
 - **Instant trigger-local feedback.** Always acknowledge within the ~100ms window at the point of interaction, even when the underlying work is slow. Never let the *acknowledgment* wait on the work.
 
-The governing principle (Linear): **UI responsiveness must never depend on network latency.** The interface should respond to the user at memory speed; the network reconciles afterward, invisibly. If any interaction's feedback is gated on a server response, that's the bug to fix before you touch a single easing curve.
+The governing principle: **UI responsiveness must never depend on network latency.** The interface should respond to the user at memory speed; the network reconciles afterward, invisibly. If any interaction's feedback is gated on a server response, that's the bug to fix before you touch a single easing curve.
 
 → Optimistic UI mechanics, rollback patterns, skeleton timing (the ~150–300ms show-delay and ~300–500ms minimum-visible guard against flicker), and feedback recipes: **[interaction-states.md](interaction-states.md)**.
 
@@ -258,7 +258,7 @@ The governing principle (Linear): **UI responsiveness must never depend on netwo
 
 Animation you can't see is pure cost — CPU/GPU cycles, battery, and main-thread pressure that janks the animations you *can* see. Cut it.
 
-- **Pause looping animations when offscreen** (Rauno). A spinner, marquee, gradient, or any infinite `@keyframes` running below the fold burns cycles for nothing. Pause it when it scrolls out of view, resume when it returns.
+- **Pause looping animations when offscreen.** A spinner, marquee, gradient, or any infinite `@keyframes` running below the fold burns cycles for nothing. Pause it when it scrolls out of view, resume when it returns.
 - **Use `IntersectionObserver`, not scroll listeners.** It fires off the main thread's scroll path, so observing visibility doesn't itself cost you scroll performance.
 - **Skip scroll-entrance animations on fast scroll.** If the user is flinging the page, don't play a 400ms fade-up on every card as it whips past — it produces a stuttery cascade and delays content. Detect high scroll velocity and just show the elements.
 - **Kill scroll listeners entirely where you can.** Replace `scroll`-event-driven reveal/parallax/sticky logic with `IntersectionObserver` (visibility) or native scroll-driven animations (`animation-timeline: scroll()` / `view()`) — both run without a main-thread `scroll` handler firing on every frame.

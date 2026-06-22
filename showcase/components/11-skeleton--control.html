@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Content Card</title>
+<style>
+  :root {
+    --surface: hsl(40 12% 98%);
+    --card: #ffffff;
+
+    --ink: hsl(225 16% 15%);
+    --ink-soft: hsl(225 9% 44%);
+    --ink-faint: hsl(225 8% 60%);
+
+    --hairline: hsl(225 16% 92%);
+    --hairline-strong: hsl(225 16% 86%);
+
+    /* skeleton bone + the sheen that sweeps across it */
+    --bone: hsl(225 18% 94%);
+    --bone-deep: hsl(225 16% 90%);
+    --sheen: hsl(225 30% 99%);
+
+    /* accent — calm indigo, used sparingly */
+    --accent: hsl(232 72% 58%);
+    --accent-hi: hsl(232 78% 64%);
+    --accent-lo: hsl(232 70% 50%);
+    --accent-ring: hsl(232 72% 58% / 0.28);
+    --accent-wash: hsl(232 70% 97%);
+
+    --focus: hsl(232 84% 58%);
+
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; height: 100%; }
+
+  body {
+    background: var(--surface);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 44px 28px;
+    min-height: 100vh;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 400px;
+  }
+
+  /* ----------------------------- the card ----------------------------- */
+  .card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    box-shadow:
+      0 1px 1px hsl(225 24% 20% / 0.025),
+      0 2px 5px -2px hsl(225 24% 20% / 0.05),
+      0 14px 32px -16px hsl(225 30% 22% / 0.16);
+    padding: 20px 20px 18px;
+    overflow: hidden;
+  }
+
+  /* the thin progress hairline that lives at the very top edge */
+  .card__progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    transform: scaleX(0);
+    transform-origin: left center;
+    background: linear-gradient(90deg, var(--accent-hi), var(--accent));
+    opacity: 0;
+    border-radius: 2px;
+    z-index: 4;
+  }
+  .card[data-state="loading"] .card__progress {
+    opacity: 1;
+    animation: progress 1300ms var(--ease-out) forwards;
+  }
+  @keyframes progress {
+    0%   { transform: scaleX(0); }
+    55%  { transform: scaleX(0.7); }
+    100% { transform: scaleX(0.96); }
+  }
+
+  /* ---------------------------- top row ------------------------------- */
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+  }
+
+  /* avatar — shared box for both skeleton + real photo */
+  .avatar {
+    position: relative;
+    flex: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--bone);
+  }
+  .avatar__img {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: 0.01em;
+    background: linear-gradient(150deg, var(--accent-hi), var(--accent-lo));
+    box-shadow: inset 0 1px 1px hsl(0 0% 100% / 0.28), inset 0 -2px 4px hsl(232 60% 30% / 0.3);
+  }
+
+  .head__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  /* real name + meta */
+  .name {
+    font-size: 15.5px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    line-height: 1;
+    color: var(--ink-faint);
+  }
+  .meta__dot {
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.55;
+  }
+  .verified { color: var(--accent); display: inline-flex; }
+  .verified svg { width: 14px; height: 14px; display: block; }
+
+  /* ---------------------------- excerpt ------------------------------- */
+  .excerpt {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .line {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* --------------------------- thumbnail ------------------------------ */
+  .thumb {
+    position: relative;
+    margin-top: 16px;
+    height: 132px;
+    border-radius: 13px;
+    overflow: hidden;
+    background: var(--bone);
+    border: 1px solid var(--hairline);
+  }
+  /* a quietly pretty generated "image": layered conic + linear gradients */
+  .thumb__img {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background:
+      radial-gradient(120% 120% at 18% 16%, hsl(38 96% 64% / 0.95), transparent 46%),
+      radial-gradient(130% 130% at 88% 24%, hsl(330 82% 64% / 0.9), transparent 50%),
+      radial-gradient(150% 150% at 70% 96%, hsl(232 80% 60%), transparent 60%),
+      linear-gradient(135deg, hsl(258 70% 56%), hsl(212 78% 52%));
+    transition: opacity 520ms var(--ease-soft);
+  }
+  .thumb__grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    mix-blend-mode: soft-light;
+    background-image:
+      repeating-linear-gradient(115deg, hsl(0 0% 100% / 0.10) 0 1px, transparent 1px 4px);
+    transition: opacity 520ms var(--ease-soft);
+  }
+  .thumb__badge {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px 4px 7px;
+    border-radius: 999px;
+    background: hsl(225 24% 12% / 0.42);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 550;
+    letter-spacing: 0.01em;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 460ms var(--ease-soft) 80ms, transform 460ms var(--ease-soft) 80ms;
+  }
+  .thumb__badge svg { width: 12px; height: 12px; display: block; }
+  .card[data-state="ready"] .thumb__img,
+  .card[data-state="ready"] .thumb__grain { opacity: 1; }
+  .card[data-state="ready"] .thumb__badge { opacity: 1; transform: translateY(0); }
+
+  /* --------------------------- skeleton ------------------------------- */
+  /* every skeleton bone shares one shimmering surface */
+  .bone {
+    position: relative;
+    border-radius: 7px;
+    background: var(--bone);
+    overflow: hidden;
+  }
+  .bone::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--sheen) 50%,
+      transparent 100%
+    );
+    animation: shimmer 1450ms var(--ease-soft) infinite;
+  }
+  @keyframes shimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* bone variants */
+  .avatar .bone { position: absolute; inset: 0; border-radius: 50%; background: var(--bone-deep); }
+  .bone--name  { height: 13px; width: 58%; }
+  .bone--meta  { height: 10px; width: 38%; border-radius: 6px; }
+  .bone--line  { height: 11px; }
+  .bone--line.w1 { width: 100%; }
+  .bone--line.w2 { width: 82%; }
+  .bone--thumb { position: absolute; inset: 0; border-radius: 0; background: var(--bone-deep); }
+
+  /* ---- the swap: skeleton out, content in -------------------------- */
+  /* Each "slot" holds skeleton + content stacked; we cross-fade them.   */
+  .slot { position: relative; }
+  .slot__skel,
+  .slot__real { transition: opacity 360ms var(--ease-soft); }
+
+  /* default (loading): show skeleton, hide real */
+  .slot__real { opacity: 0; }
+  .slot__skel { opacity: 1; }
+
+  /* avatar + thumb stack their two layers absolutely */
+  .avatar .slot__real,
+  .thumb .slot__real { opacity: 0; }
+
+  /* READY: fade skeleton out, content in. Content lines also rise gently. */
+  .card[data-state="ready"] .slot__skel { opacity: 0; }
+  .card[data-state="ready"] .slot__real { opacity: 1; }
+
+  /* hide skeleton bones from layout once content is in (after fade) so
+     they can't intercept anything; handled by pointer-events + the fade */
+  .card[data-state="ready"] .bone::after { animation: none; }
+
+  /* the text content rises into place with a tiny stagger */
+  .card[data-state="ready"] .name      { animation: rise 460ms var(--ease-out) both; }
+  .card[data-state="ready"] .meta      { animation: rise 460ms var(--ease-out) 40ms both; }
+  .card[data-state="ready"] .line--1   { animation: rise 460ms var(--ease-out) 70ms both; }
+  .card[data-state="ready"] .line--2   { animation: rise 460ms var(--ease-out) 105ms both; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card[data-state="ready"] .avatar__img { animation: pop 520ms var(--ease-spring) both; }
+  @keyframes pop {
+    0%   { opacity: 0; transform: scale(0.7); }
+    60%  { opacity: 1; }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  /* in loading state the real content must not be there at all to read */
+  .card[data-state="loading"] .slot__real { pointer-events: none; }
+  .card[data-state="loading"] .name,
+  .card[data-state="loading"] .meta,
+  .card[data-state="loading"] .line,
+  .card[data-state="loading"] .avatar__img { opacity: 0; }
+
+  /* keep the two text slots from collapsing — give content + skel same box */
+  .line {
+    position: relative;
+  }
+  .line .slot__skel { position: absolute; inset: 0; display: flex; align-items: center; }
+  .line .slot__skel .bone { width: 100%; }
+
+  /* ----------------------------- footer ------------------------------ */
+  .foot {
+    margin-top: 18px;
+    padding-top: 15px;
+    border-top: 1px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    transition: opacity 360ms var(--ease-soft) 90ms;
+  }
+  .stat svg { width: 14px; height: 14px; display: block; }
+  .card[data-state="loading"] .stat { opacity: 0; }
+  .card[data-state="ready"] .stat { opacity: 1; }
+
+  /* reload button */
+  .reload {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--hairline-strong);
+    background: linear-gradient(180deg, #ffffff, hsl(225 20% 98.5%));
+    color: var(--ink);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    padding: 8px 14px 8px 12px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    position: relative;
+    box-shadow:
+      0 1px 1.5px hsl(225 24% 20% / 0.05),
+      inset 0 1px 0 hsl(0 0% 100% / 0.9);
+    transition:
+      transform 140ms var(--ease-spring),
+      box-shadow 180ms var(--ease-soft),
+      border-color 180ms var(--ease-soft),
+      background 180ms var(--ease-soft);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .reload:hover {
+    border-color: hsl(232 40% 78%);
+    box-shadow:
+      0 2px 6px -1px hsl(232 40% 40% / 0.16),
+      inset 0 1px 0 hsl(0 0% 100% / 0.9);
+  }
+  .reload:active {
+    transform: translateY(0.5px) scale(0.985);
+    box-shadow:
+      0 1px 1.5px hsl(225 24% 20% / 0.06),
+      inset 0 1px 2px hsl(225 20% 70% / 0.18);
+  }
+  .reload:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow:
+      0 0 0 2px var(--card),
+      0 0 0 4px var(--accent-ring);
+  }
+  .reload:disabled {
+    cursor: default;
+    color: var(--ink-faint);
+    background: hsl(225 20% 98.5%);
+  }
+  .reload:disabled:hover {
+    border-color: var(--hairline-strong);
+    box-shadow:
+      0 1px 1.5px hsl(225 24% 20% / 0.05),
+      inset 0 1px 0 hsl(0 0% 100% / 0.9);
+  }
+
+  .reload__icon {
+    width: 15px;
+    height: 15px;
+    display: block;
+    transform-origin: 50% 50%;
+  }
+  .card[data-state="loading"] .reload__icon {
+    animation: spin 720ms linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .reload__label { display: inline-block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bone::after { animation: none; }
+    .card__progress { animation: none; transform: scaleX(0.96); }
+    .reload__icon { animation: none !important; }
+    * { transition-duration: 0.001ms !important; }
+    .card[data-state="ready"] .name,
+    .card[data-state="ready"] .meta,
+    .card[data-state="ready"] .line--1,
+    .card[data-state="ready"] .line--2,
+    .card[data-state="ready"] .avatar__img { animation: none !important; opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <article class="card" id="card" data-state="loading" aria-busy="true" aria-live="polite">
+      <span class="card__progress" aria-hidden="true"></span>
+
+      <!-- top row: avatar + name/meta -->
+      <header class="head">
+        <div class="avatar">
+          <span class="slot__skel" aria-hidden="true"><span class="bone"></span></span>
+          <span class="slot__real avatar__img" id="avatar">A</span>
+        </div>
+
+        <div class="head__text">
+          <div class="slot">
+            <span class="slot__skel" aria-hidden="true"><span class="bone bone--name"></span></span>
+            <span class="slot__real name" id="name">—</span>
+          </div>
+          <div class="slot">
+            <span class="slot__skel" aria-hidden="true"><span class="bone bone--meta"></span></span>
+            <span class="slot__real meta" id="meta">
+              <span class="verified" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.5l2.5 1.8 3 .2 1 2.9 2.3 2-1 2.9 1 2.9-2.3 2-1 2.9-3 .2L12 22.5 9.5 20.7l-3-.2-1-2.9-2.3-2 1-2.9-1-2.9 2.3-2 1-2.9 3-.2z" fill="currentColor"/><path d="M8.6 12.2l2.3 2.3 4.5-4.7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span id="handle">@author</span>
+              <span class="meta__dot" aria-hidden="true"></span>
+              <span id="time">just now</span>
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <!-- excerpt: two lines -->
+      <div class="excerpt">
+        <div class="line line--1">
+          <span class="slot__skel" aria-hidden="true"><span class="bone bone--line w1"></span></span>
+          <span class="slot__real" id="line1">&nbsp;</span>
+        </div>
+        <div class="line line--2">
+          <span class="slot__skel" aria-hidden="true"><span class="bone bone--line w2"></span></span>
+          <span class="slot__real" id="line2">&nbsp;</span>
+        </div>
+      </div>
+
+      <!-- thumbnail -->
+      <div class="thumb">
+        <span class="slot__skel" aria-hidden="true"><span class="bone bone--thumb"></span></span>
+        <span class="slot__real thumb__img" aria-hidden="true"></span>
+        <span class="slot__real thumb__grain" aria-hidden="true"></span>
+        <span class="thumb__badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
+          <span id="badge">Preview</span>
+        </span>
+      </div>
+
+      <!-- footer: stats + reload -->
+      <div class="foot">
+        <span class="stat" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.3a2 2 0 0 0 2-1.7l1.4-9a2 2 0 0 0-2-2.3z"/><line x1="7" y1="22" x2="7" y2="11"/></svg>
+          <span id="likes">—</span>
+        </span>
+
+        <button class="reload" id="reload" type="button" aria-label="Reload content">
+          <svg class="reload__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+            <polyline points="21 3 21 9 15 9"/>
+          </svg>
+          <span class="reload__label" id="reloadLabel">Reload</span>
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <script>
+    (function () {
+      var card    = document.getElementById('card');
+      var reload  = document.getElementById('reload');
+      var rLabel  = document.getElementById('reloadLabel');
+
+      var avatar  = document.getElementById('avatar');
+      var name    = document.getElementById('name');
+      var handle  = document.getElementById('handle');
+      var time    = document.getElementById('time');
+      var line1   = document.getElementById('line1');
+      var line2   = document.getElementById('line2');
+      var badge   = document.getElementById('badge');
+      var likes   = document.getElementById('likes');
+
+      // a little pool of plausible content so each reload feels fresh
+      var people = [
+        { name: 'Maya Okafor',   handle: '@mayabuilds',   initial: 'M',
+          l1: 'Spent the weekend rebuilding our design tokens from scratch —',
+          l2: 'turns out naming things really is the hard part.',
+          badge: 'Case study', likes: '1.2k', time: '4h' },
+        { name: 'Theo Lindqvist', handle: '@theodraws',   initial: 'T',
+          l1: 'New illustration set is live. Soft gradients, warm light, and a',
+          l2: 'whole lot of patience with the pen tool.',
+          badge: 'Gallery', likes: '894', time: '1h' },
+        { name: 'Priya Nair',     handle: '@priyaships',  initial: 'P',
+          l1: 'Shipped the skeleton loader everyone kept asking about. It',
+          l2: 'cross-fades instead of snapping — feels so much calmer.',
+          badge: 'Changelog', likes: '2.4k', time: '12m' },
+        { name: 'Daniel Reyes',   handle: '@danmakes',    initial: 'D',
+          l1: 'Quiet afternoon prototyping micro-interactions. Every easing',
+          l2: 'curve is a tiny argument you have with yourself.',
+          badge: 'Prototype', likes: '631', time: '2d' },
+        { name: 'Aiko Tanaka',    handle: '@aikoui',      initial: 'A',
+          l1: 'Color study for the new brand. Pulled the whole palette from a',
+          l2: 'photo of the sky at 6:42 this morning.',
+          badge: 'Moodboard', likes: '3.1k', time: '7h' }
+      ];
+
+      var hueSets = [
+        '38 96% 64%;330 82% 64%;258 70% 56%;212 78% 52%',
+        '162 70% 52%;192 82% 56%;232 72% 56%;268 64% 54%',
+        '14 90% 62%;340 84% 60%;282 66% 56%;220 78% 54%',
+        '46 92% 60%;22 88% 58%;334 76% 58%;260 70% 56%',
+        '198 84% 58%;172 70% 50%;236 74% 58%;276 66% 56%'
+      ];
+
+      var idx = -1;
+      var timer = null;
+
+      function setThumb(seedIndex) {
+        var parts = hueSets[seedIndex % hueSets.length].split(';');
+        var imgEl = document.querySelector('.thumb__img');
+        imgEl.style.background =
+          'radial-gradient(120% 120% at 18% 16%, hsl(' + parts[0] + ' / 0.95), transparent 46%),' +
+          'radial-gradient(130% 130% at 88% 24%, hsl(' + parts[1] + ' / 0.9), transparent 50%),' +
+          'radial-gradient(150% 150% at 70% 96%, hsl(' + parts[2] + '), transparent 60%),' +
+          'linear-gradient(135deg, hsl(' + parts[3] + '), hsl(' + parts[2] + '))';
+      }
+
+      function fill(p, seedIndex) {
+        avatar.textContent = p.initial;
+        name.textContent   = p.name;
+        handle.textContent = p.handle;
+        time.textContent   = p.time;
+        line1.textContent  = p.l1;
+        line2.textContent  = p.l2;
+        badge.textContent  = p.badge;
+        likes.textContent  = p.likes;
+        setThumb(seedIndex);
+      }
+
+      function load() {
+        if (timer) clearTimeout(timer);
+
+        // enter loading state
+        card.setAttribute('data-state', 'loading');
+        card.setAttribute('aria-busy', 'true');
+        reload.disabled = true;
+        rLabel.textContent = 'Loading';
+
+        // pick next item (never the same one twice in a row)
+        var next;
+        do { next = Math.floor(Math.random() * people.length); }
+        while (people.length > 1 && next === idx);
+        idx = next;
+
+        // variable delay ~100–1200ms
+        var delay = 100 + Math.floor(Math.random() * 1100);
+
+        timer = setTimeout(function () {
+          fill(people[idx], idx);
+          card.setAttribute('data-state', 'ready');
+          card.setAttribute('aria-busy', 'false');
+          reload.disabled = false;
+          rLabel.textContent = 'Reload';
+        }, delay);
+      }
+
+      reload.addEventListener('click', function () {
+        if (reload.disabled) return;
+        load();
+      });
+
+      // kick off the first load shortly after paint so the skeleton is seen
+      setTimeout(load, 480);
+    })();
+  </script>
+</body>
+</html>
