@@ -123,6 +123,10 @@ Before hand-rolling, check whether a platform primitive does it better (degrade 
 | Mismatched nested corner radii | `outer = inner + padding` |
 | Spinner during a 120ms fetch | Optimistic update; or show-delay the loader 150–300ms |
 | Fixed desktop-only grid that shatters at other widths | Fluid by default (`auto-fit`/`minmax` + a breakpoint floor) — design for the stated context, degrade gracefully outside it |
+| Colored left/top accent bar on a card or alert | Tinted background + semantic glyph + words carry severity; the stripe is a generated-UI tell (only the active-tab underline earns an accent edge) |
+| Cards in one row with ragged heights | Rows share a height: keep `align-items: stretch` and flex the card body |
+| Em dashes in UI copy ("Signups — Apr") | Middot in labels ("Signups · Apr"), colon for key-value pairs; no em dashes anywhere in the interface |
+| Chart story only reachable via hover, or no hover at all | Story lands with zero interaction (direct labels, threshold bands, annotations); points still reward hover with a tooltip, gated |
 
 ## Review output contract
 

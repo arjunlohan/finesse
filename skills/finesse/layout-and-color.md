@@ -96,6 +96,8 @@ Tailwind ships this for you: its default scale (`p-1`=4px, `p-2`=8px, `p-4`=16px
 
 **Optical alignment beats mathematical alignment.** The eye, not the pixel ruler, is the judge — a centered triangle, an arrow glyph, or an icon beside a label often needs a 1–2px nudge to *look* centered even when it measures off. That detail (icon-side padding, play-triangle nudge, asymmetric-glyph fixes) lives in [surfaces.md](surfaces.md).
 
+**Cards sharing a row share a height.** A grid row where one card floats short reads as a mistake, even when each card is fine alone. Keep the default `align-items: stretch`, make each card a column flexbox, and let its main region flex (`.card-body { flex: 1 }`) so siblings bottom out together. If one card genuinely has half the content, move it to a different row or size slot deliberately; never leave the ragged bottom to chance.
+
 ### Design for the stated context; survive the others
 
 Optimize for the viewport the work is *for* — a TV dashboard gets room-scale type, a mobile flow gets thumb-reach — but never let the layout **shatter** anywhere else. Artifacts get judged in places they weren't designed for: embedded in an iframe, split-screened, projected, screenshotted into a doc. The floor is cheap:
@@ -107,6 +109,15 @@ Optimize for the viewport the work is *for* — a TV dashboard gets room-scale t
 ```
 
 A fixed `grid-template-columns: 1fr 1fr 1.45fr` with no breakpoint is a desktop-only bet — the day the page is viewed at half width, it overflows and reads as broken. `auto-fit`/`minmax` plus one breakpoint costs two lines and removes the failure mode entirely.
+
+### Charts earn the same craft as controls
+
+Dashboards fail as interfaces before they fail as statistics. Four rules keep them honest:
+
+- **Draw thresholds, don't footnote them.** If crossing a line matters (churn at 4%), shade the region beyond it as a band on the chart and annotate the crossing ("crossed 4% in Mar"). The breach should be visible before any number is read. Pair the band with a glyph or label so the warning works without color ([accessibility.md](accessibility.md)).
+- **Label series directly** at line ends (name plus latest value). Legends force a lookup loop between the key and the line.
+- **Readable without interaction, rewarding with it.** The story must land with zero hovering: large type, direct labels, annotations. Data points still reward the cursor with a tooltip (exact value, period), gated behind `@media (hover: hover)` like any hover state ([interaction-states.md](interaction-states.md)).
+- **Tabular numbers wherever values align** ([typography.md](typography.md)).
 
 ### No dead zones in lists
 
@@ -278,22 +289,17 @@ Borders are the reflex tool for separation and almost always the wrong one. Ever
 .table tbody tr:nth-child(even) { background: var(--neutral-2); }
 ```
 
-**When you *do* use a border, make it earn structure as an accent.** A colored border on **one edge** carries meaning cheaply and looks intentional rather than boxy:
-
-- **Top** border on a card — a category color or status.
-- **Left** border on an alert / blockquote — severity (red danger, amber warning).
-- **Bottom** border on a tab — the active selection.
+**Do not decorate cards or alerts with colored accent bars.** The colored left edge on an alert (`border-left: 4px solid red`), and its cousin the colored top border on a card, read as template output: the tell of generated UI, not craft. Severity needs no stripe. A tinted background, a semantic glyph, and plain words already carry it, and they survive forced-colors mode, where the stripe vanishes anyway.
 
 ```css
-.alert--warning { border-left: 3px solid var(--amber-7); }
-.tab[aria-selected="true"] { border-bottom: 2px solid var(--blue-6); }
-.card--featured { border-top: 3px solid var(--primary-6); }
+/* Alert without the stripe: tint + glyph + words carry severity. */
+.alert--warning { background: var(--amber-1); border: 1px solid var(--amber-3); }
+.alert--warning .title::before { content: "▲ "; color: var(--amber-9); }
 ```
 
 ```html
-<!-- Tailwind: accent one edge, not all four -->
-<div class="border-l-4 border-amber-500 pl-4">Warning…</div>
-<div class="border-b-2 border-blue-600">Active tab</div>
+<!-- Tailwind: tint the surface, mark with a glyph. No border-l-4. -->
+<div class="bg-amber-50 border border-amber-200 rounded-lg p-4">▲ Churn above threshold…</div>
 ```
 
-A single accent edge adds hierarchy for almost nothing. A full four-sided `1px solid` border around everything adds noise for almost nothing. Know the difference.
+One accent edge still earns its place: the **selection indicator**. A `2px` bottom border on the active tab marks state, not decoration (`.tab[aria-selected="true"] { border-bottom: 2px solid var(--blue-6); }`). If a border exists purely to announce "this card is special," delete it and let background, type, and content do the work.

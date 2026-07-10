@@ -222,3 +222,8 @@ Reserve `clamp()` for headings and hero/display type where the size genuinely sh
 - **At most two typefaces.** One is often enough — separate roles with weight, size, and color before reaching for a second family. A third typeface almost always reads as noise.
 - **Pick families with 5+ weights.** Hierarchy is built primarily on weight (see above), so a typeface needs room — at minimum a regular (400), a medium (500), and a bold (600/700), with more headroom welcome. A two-weight family boxes you in and forces you back onto size for every distinction. Superfamilies (e.g. Inter, with a paired mono) also let the two-typeface budget cover body, display, and code coherently.
 - **Pair by contrast, not similarity.** If you do use two, make them clearly different (e.g. a serif display over a sans body) so the pairing reads as intentional rather than a near-miss.
+
+## Punctuation in UI copy
+
+- **No em dashes, anywhere in the interface.** "Weighted churn — Apr" reads as generated text, and users notice. Use a middot for label separators ("Weighted churn · Apr"), a colon for key-value pairs ("Churn: 3.6%"), and commas or parentheses inside sentences.
+- **The middot (·) is the workhorse** for compact metadata rows: "12 files · 3 min read · updated Apr 2". It separates without shouting and reads cleanly at small sizes.
