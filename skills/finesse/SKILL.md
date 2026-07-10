@@ -122,6 +122,7 @@ Before hand-rolling, check whether a platform primitive does it better (degrade 
 | Numbers jumping width as they change | `font-variant-numeric: tabular-nums` |
 | Mismatched nested corner radii | `outer = inner + padding` |
 | Spinner during a 120ms fetch | Optimistic update; or show-delay the loader 150–300ms |
+| Fixed desktop-only grid that shatters at other widths | Fluid by default (`auto-fit`/`minmax` + a breakpoint floor) — design for the stated context, degrade gracefully outside it |
 
 ## Review output contract
 

@@ -96,6 +96,18 @@ Tailwind ships this for you: its default scale (`p-1`=4px, `p-2`=8px, `p-4`=16px
 
 **Optical alignment beats mathematical alignment.** The eye, not the pixel ruler, is the judge — a centered triangle, an arrow glyph, or an icon beside a label often needs a 1–2px nudge to *look* centered even when it measures off. That detail (icon-side padding, play-triangle nudge, asymmetric-glyph fixes) lives in [surfaces.md](surfaces.md).
 
+### Design for the stated context; survive the others
+
+Optimize for the viewport the work is *for* — a TV dashboard gets room-scale type, a mobile flow gets thumb-reach — but never let the layout **shatter** anywhere else. Artifacts get judged in places they weren't designed for: embedded in an iframe, split-screened, projected, screenshotted into a doc. The floor is cheap:
+
+```css
+/* Fluid by default: columns collapse instead of clipping. */
+.tiles { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+@media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+```
+
+A fixed `grid-template-columns: 1fr 1fr 1.45fr` with no breakpoint is a desktop-only bet — the day the page is viewed at half width, it overflows and reads as broken. `auto-fit`/`minmax` plus one breakpoint costs two lines and removes the failure mode entirely.
+
 ### No dead zones in lists
 
 In a vertical or horizontal list of **interactive** items, there must be **no inert gaps** between them. A 12px `margin` between two menu rows is 12px where the cursor is over *nothing* — the click does nothing, the hover highlight flickers off, and a fast user misses. It feels broken even though nothing is "wrong."
