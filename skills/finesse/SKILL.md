@@ -144,6 +144,14 @@ When reviewing code or "making it feel better," return findings as **before/afte
 - [ ] `prefers-reduced-motion` honored with substitutions, not deletions
 - [ ] Information never conveyed by motion or color alone
 
+## Model notes
+
+Newer models need fewer rules, not more. Treat this skill as a **calibration layer**: the tokens and thresholds are committed *defaults*, not shackles — when a product's design language genuinely demands different values, change the tokens once at `:root` and say so, rather than scattering one-off exceptions.
+
+- **Claude Opus 4.8** has strong design instincts with one persistent house default: warm cream/off-white backgrounds (~`#F4F1EA`), serif display type (Georgia, Fraunces, Playfair), italic word-accents, and a terracotta/amber accent. That reads beautifully for editorial, hospitality, and portfolio briefs — and feels wrong for dashboards, dev tools, fintech, healthcare, and enterprise UI. Generic nudges ("don't use cream," "make it clean") just swap in a *different* fixed palette. Two fixes that work: **(1)** specify a concrete alternative direction — palette hexes, type family, radius, motion spec; **(2)** propose 3–4 distinct visual directions first (bg hex / accent hex / typeface + one-line rationale), let the user pick, and build only that one.
+- **Anti-slop guard (any model):** avoid the generic-AI tells — Inter/Roboto/Arial/system fonts as display type, purple gradients on white or dark, timid evenly-distributed palettes, cookie-cutter hero layouts. Commit to a cohesive, context-specific direction; dominant colors with sharp accents beat evenly-spread ones.
+- **Claude Fable 5** follows brief instructions reliably and can over-comply with prescriptive checklists — over-prescription degrades its output. Apply this skill's *judgment*, not just its letter: name what each animation communicates, pull from one token scale, honor reduced motion. If a recipe fights the product's design language, adapt it deliberately and note the deviation.
+
 ## Reference files
 
 | File | Read it for |
