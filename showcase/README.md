@@ -1,4 +1,4 @@
-# finesse — showcase
+# finesse: showcase
 
 A self-contained landing page that proves what the `finesse` skill is worth, by experiment.
 
@@ -28,10 +28,10 @@ velocity-aware reveal). It dogfoods the skill it is showing off.
 
 ## Embed it elsewhere
 
-See [`EMBED.md`](EMBED.md) — it is written so a coding agent can follow it directly.
+See [`EMBED.md`](EMBED.md): it is written so a coding agent can follow it directly.
 
 ## Feature a different set or reorder
 
-Edit the `cmp-data` JSON block in `index.html` (the `DATA` array — each entry has
+Edit the `cmp-data` JSON block in `index.html` (the `DATA` array: each entry has
 `file`, `cat`, `headline`, `tell`, `try`, `prompt`, `h`) and the `FILE` map just below
 it in the script. All 15 component pairs live in `components/`.

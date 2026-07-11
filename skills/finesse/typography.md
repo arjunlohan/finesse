@@ -1,6 +1,6 @@
 # Typography
 
-Type is most of the UI. Get these defaults right and prose reads effortlessly, numbers stop twitching, and hierarchy reads at a glance without a single decorative flourish. Everything here is a committed default — set it, then trust your eyes. Framework-agnostic CSS first, Tailwind variants after. See [SKILL.md](SKILL.md) items 16–17 for the one-line versions; this file is the depth.
+Type is most of the UI. Get these defaults right and prose reads effortlessly, numbers stop twitching, and hierarchy reads at a glance without a single decorative flourish. Everything here is a committed default: set it, then trust your eyes. Framework-agnostic CSS first, Tailwind variants after. See [SKILL.md](SKILL.md) items 16–17 for the one-line versions; this file is the depth.
 
 Cross-references: text color hierarchy is shared with [layout-and-color.md](layout-and-color.md); contrast ratios and the ≥16px floor are enforced in [accessibility.md](accessibility.md); type sitting on cards/elevated surfaces interacts with [surfaces.md](surfaces.md).
 
@@ -27,13 +27,13 @@ p, li, figcaption, blockquote {
 <p class="text-pretty">Body copy whose last line will never be a single orphaned word.</p>
 ```
 
-**GOTCHA — `balance` silently dies on long text.** The balancing algorithm is expensive (the browser re-flows the block searching for an even split), so browsers cap it by line count: **≤6 wrapped lines in Chromium, ≤10 in Firefox.** Past the cap the declaration is *silently ignored* — no warning, no partial effect, it just wraps greedily. So `balance` is a heading tool, not a paragraph tool. For any block that runs 10+ lines, skip both: `balance` won't fire, and `pretty` buys little on a long block. Reserve `pretty` for short-to-medium body paragraphs where a stubby last line is actually visible.
+**GOTCHA: `balance` silently dies on long text.** The balancing algorithm is expensive (the browser re-flows the block searching for an even split), so browsers cap it by line count: **≤6 wrapped lines in Chromium, ≤10 in Firefox.** Past the cap the declaration is *silently ignored*: no warning, no partial effect, it just wraps greedily. So `balance` is a heading tool, not a paragraph tool. For any block that runs 10+ lines, skip both: `balance` won't fire, and `pretty` buys little on a long block. Reserve `pretty` for short-to-medium body paragraphs where a stubby last line is actually visible.
 
 | Element | Property | Tailwind | Why | Skip when |
 | --- | --- | --- | --- | --- |
 | `h1`–`h3`, short titles, card headers | `text-wrap: balance` | `text-balance` | Even line lengths, no orphan | Heading wraps to >6 lines (won't apply) |
 | `p`, `li`, `blockquote`, `figcaption` | `text-wrap: pretty` | `text-pretty` | No stubby last line | Block runs 10+ lines (negligible payoff) |
-| Long-form article body, log output, code | *(neither)* | — | Greedy wrapping is fine and cheapest | — |
+| Long-form article body, log output, code | *(neither)* |: | Greedy wrapping is fine and cheapest |: |
 
 ## Font smoothing
 
@@ -52,9 +52,9 @@ html {
 <html class="antialiased">
 ```
 
-**Why.** macOS renders text *heavier* than the designer intended by default (subpixel antialiasing fattens stems). `-webkit-font-smoothing: antialiased` switches it to grayscale antialiasing, which renders crisper and slightly thinner — closer to how the type was drawn. `-moz-osx-font-smoothing: grayscale` is the Firefox-on-macOS equivalent. `text-rendering: optimizeLegibility` turns on kerning and standard ligatures.
+**Why.** macOS renders text *heavier* than the designer intended by default (subpixel antialiasing fattens stems). `-webkit-font-smoothing: antialiased` switches it to grayscale antialiasing, which renders crisper and slightly thinner: closer to how the type was drawn. `-moz-osx-font-smoothing: grayscale` is the Firefox-on-macOS equivalent. `text-rendering: optimizeLegibility` turns on kerning and standard ligatures.
 
-**Root only — never per-element.** Setting font-smoothing on individual components makes the *same typeface* render at visibly different apparent weights depending on which rule won, so a button label looks thinner than the heading above it. Declare it once at `:root`/`html` and let it inherit. Non-macOS platforms ignore these properties entirely, so applying them universally is safe — there's no downside on Windows, Linux, iOS, or Android, and the macOS win is real.
+**Root only: never per-element.** Setting font-smoothing on individual components makes the *same typeface* render at visibly different apparent weights depending on which rule won, so a button label looks thinner than the heading above it. Declare it once at `:root`/`html` and let it inherit. Non-macOS platforms ignore these properties entirely, so applying them universally is safe: there's no downside on Windows, Linux, iOS, or Android, and the macOS win is real.
 
 ## Tabular numbers
 
@@ -82,9 +82,9 @@ html {
 | Stat columns, dashboards, leaderboards, scoreboards | Zip / postal codes |
 | Any table column of figures | Version numbers (`v2.1.0`) |
 
-The rule: **does this number mutate while on screen, or align vertically against other numbers?** If yes, tabular. If it's set once and just sits there as part of a sentence, leave it proportional — tabular digits in running prose look slightly mechanical.
+The rule: **does this number mutate while on screen, or align vertically against other numbers?** If yes, tabular. If it's set once and just sits there as part of a sentence, leave it proportional: tabular digits in running prose look slightly mechanical.
 
-**GOTCHA — Inter's `1`.** In Inter, enabling `tabular-nums` widens and re-centers the digit `1` (it grows serif-like flat feet to fill the now-wider slot). This is *expected* behavior, not a bug — but glance at the result, because in a short fixed string like a version badge or a single price the new `1` can look subtly off. Verify it reads right in context before shipping.
+**GOTCHA: Inter's `1`.** In Inter, enabling `tabular-nums` widens and re-centers the digit `1` (it grows serif-like flat feet to fill the now-wider slot). This is *expected* behavior, not a bug, but glance at the result, because in a short fixed string like a version badge or a single price the new `1` can look subtly off. Verify it reads right in context before shipping.
 
 **Two alignment rules that travel with numbers:**
 - **Right-align columns of numbers** (`text-align: right` / `text-right`). The ones, tens, hundreds line up vertically and become scannable; combined with tabular-nums the column is a clean grid. Left-aligned number columns are nearly unreadable.
@@ -101,9 +101,9 @@ Amateur hierarchy cranks font-size for every level until the page is a ransom no
 | Body / default UI text | 400–500 | 500 reads slightly crisper for dense UI |
 | Emphasis, labels, buttons, active nav | 600–700 | The jump that signals "this matters" |
 | Headings | 500–600 | Medium weights read best for most headings; reserve 700+ for true display |
-| **Never** | <400 | Thin/light weights are illegible for UI at body sizes — banned |
+| **Never** | <400 | Thin/light weights are illegible for UI at body sizes: banned |
 
-**Three text colors — and never pure black.** Establish exactly three foreground colors and assign by importance (this hierarchy is shared with [layout-and-color.md](layout-and-color.md)):
+**Three text colors, and never pure black.** Establish exactly three foreground colors and assign by importance (this hierarchy is shared with [layout-and-color.md](layout-and-color.md)):
 
 | Tier | Use | Color |
 | --- | --- | --- |
@@ -111,17 +111,17 @@ Amateur hierarchy cranks font-size for every level until the page is a ransom no
 | Secondary | Supporting text, labels, captions | Medium grey |
 | Tertiary | Metadata, placeholders, disabled, timestamps | Lighter grey |
 
-Pure `#000` on white is harsher than anything in the physical world and vibrates against the background; a near-black reads softer and more intentional. Confirm each tier still clears the contrast floor in [accessibility.md](accessibility.md) — tertiary grey is where contrast quietly fails.
+Pure `#000` on white is harsher than anything in the physical world and vibrates against the background; a near-black reads softer and more intentional. Confirm each tier still clears the contrast floor in [accessibility.md](accessibility.md): tertiary grey is where contrast quietly fails.
 
 **De-emphasize as much as you emphasize.** Hierarchy is relative. Rather than only making the important thing louder (bigger, bolder, darker), make the *unimportant* thing quieter (smaller, lighter, lower-contrast). Pushing secondary content down is usually cleaner than pushing primary content up, and it keeps the overall size scale tight.
 
-**NEVER change `font-weight` on hover/active/selected.** Bolder text is wider text, so swapping weight on interaction nudges everything after it — the row reflows and the layout jumps every time the pointer moves. Signal state with color, background, or a weight-stable indicator instead.
+**NEVER change `font-weight` on hover/active/selected.** Bolder text is wider text, so swapping weight on interaction nudges everything after it: the row reflows and the layout jumps every time the pointer moves. Signal state with color, background, or a weight-stable indicator instead.
 
 ```css
-/* WRONG — text gets wider on hover, layout shifts */
+/* WRONG: text gets wider on hover, layout shifts */
 .nav-link:hover { font-weight: 700; }
 
-/* RIGHT — color change, zero reflow */
+/* RIGHT: color change, zero reflow */
 .nav-link { color: var(--text-secondary); }
 .nav-link:hover { color: var(--text-primary); }
 
@@ -152,7 +152,7 @@ The **measure** is the number of characters per line. Comfortable reading lives 
 <article class="max-w-[65ch]">…</article>
 ```
 
-`ch` units are the right tool here — `1ch` is the advance width of `0`, so `65ch` stays close to ~65 characters even as the font or size changes, where a fixed `px` width drifts.
+`ch` units are the right tool here: `1ch` is the advance width of `0`, so `65ch` stays close to ~65 characters even as the font or size changes, where a fixed `px` width drifts.
 
 **Two prohibitions for long-form text:**
 - **Don't center long-form text.** Centered paragraphs give every line a different left edge, so the return sweep has no fixed target and reading slows. Center headings and short callouts only; left-align body.
@@ -165,7 +165,7 @@ Line height (leading) is **inversely proportional to font size.** Small text nee
 | Text size | `line-height` | Roughly |
 | --- | --- | --- |
 | Body, small UI text | 1.5 | 130–150% |
-| Subheads / mid-size | 1.3–1.4 | — |
+| Subheads / mid-size | 1.3–1.4 |: |
 | Large headings, display | 1.1–1.25 | Tighter as it grows |
 
 ```css
@@ -175,9 +175,9 @@ h1   { font-size: clamp(2rem, 5vw, 4.5rem); line-height: 1.1; }
 
 **Lower BOTH letter-spacing and line-height as text grows; raise both as text shrinks.** Big type set at default tracking and leading looks loose and unfinished; tightening both pulls a headline into a solid shape. Small type set tight gets cramped and illegible; loosening both opens it up.
 
-**Leave letter-spacing alone otherwise.** At body sizes the typeface's designed spacing is already correct — don't touch `letter-spacing` for ordinary text. The only routine exceptions:
-- **Large headlines** — a slightly negative tracking (e.g. `-0.02em`) tightens display type.
-- **All-caps / small eyebrow labels** — uppercase runs need *positive* tracking (e.g. `0.05em`) to breathe, since caps were never spaced for setting in runs.
+**Leave letter-spacing alone otherwise.** At body sizes the typeface's designed spacing is already correct: don't touch `letter-spacing` for ordinary text. The only routine exceptions:
+- **Large headlines**: a slightly negative tracking (e.g. `-0.02em`) tightens display type.
+- **All-caps / small eyebrow labels**: uppercase runs need *positive* tracking (e.g. `0.05em`) to breathe, since caps were never spaced for setting in runs.
 
 ```css
 h1            { letter-spacing: -0.02em; }
@@ -186,7 +186,7 @@ h1            { letter-spacing: -0.02em; }
 
 ## Sizing
 
-**Body text ≥16px. Form inputs ≥16px — this one is non-negotiable.** Any `font-size` below 16px on a focusable `<input>`, `<select>`, or `<textarea>` makes **iOS Safari auto-zoom** the page on focus, yanking the layout around the field. The fix is simply never to go under 16px on inputs.
+**Body text ≥16px. Form inputs ≥16px: this one is non-negotiable.** Any `font-size` below 16px on a focusable `<input>`, `<select>`, or `<textarea>` makes **iOS Safari auto-zoom** the page on focus, yanking the layout around the field. The fix is simply never to go under 16px on inputs.
 
 ```css
 body { font-size: 16px; }          /* floor for readable body text */
@@ -200,7 +200,7 @@ input, select, textarea {
 <input class="text-base" />
 ```
 
-The 16px floor is also an accessibility baseline — see [accessibility.md](accessibility.md). Smaller is acceptable only for genuinely secondary metadata (captions, legal), never for primary reading or any input.
+The 16px floor is also an accessibility baseline: see [accessibility.md](accessibility.md). Smaller is acceptable only for genuinely secondary metadata (captions, legal), never for primary reading or any input.
 
 **Fluid sizing with `clamp()`** lets large type scale with the viewport between a floor and a ceiling, with no breakpoints:
 
@@ -215,15 +215,15 @@ The 16px floor is also an accessibility baseline — see [accessibility.md](acce
 <h1 class="text-[clamp(2rem,5vw,4.5rem)]">…</h1>
 ```
 
-Reserve `clamp()` for headings and hero/display type where the size genuinely should respond to viewport width. Body text wants a *fixed*, predictable size (≥16px) — fluid body text fights the reader and can dip under the floor on small screens.
+Reserve `clamp()` for headings and hero/display type where the size genuinely should respond to viewport width. Body text wants a *fixed*, predictable size (≥16px): fluid body text fights the reader and can dip under the floor on small screens.
 
 ## Font choices
 
-- **At most two typefaces.** One is often enough — separate roles with weight, size, and color before reaching for a second family. A third typeface almost always reads as noise.
-- **Pick families with 5+ weights.** Hierarchy is built primarily on weight (see above), so a typeface needs room — at minimum a regular (400), a medium (500), and a bold (600/700), with more headroom welcome. A two-weight family boxes you in and forces you back onto size for every distinction. Superfamilies (e.g. Inter, with a paired mono) also let the two-typeface budget cover body, display, and code coherently.
+- **At most two typefaces.** One is often enough: separate roles with weight, size, and color before reaching for a second family. A third typeface almost always reads as noise.
+- **Pick families with 5+ weights.** Hierarchy is built primarily on weight (see above), so a typeface needs room: at minimum a regular (400), a medium (500), and a bold (600/700), with more headroom welcome. A two-weight family boxes you in and forces you back onto size for every distinction. Superfamilies (e.g. Inter, with a paired mono) also let the two-typeface budget cover body, display, and code coherently.
 - **Pair by contrast, not similarity.** If you do use two, make them clearly different (e.g. a serif display over a sans body) so the pairing reads as intentional rather than a near-miss.
 
 ## Punctuation in UI copy
 
-- **No em dashes, anywhere in the interface.** "Weighted churn — Apr" reads as generated text, and users notice. Use a middot for label separators ("Weighted churn · Apr"), a colon for key-value pairs ("Churn: 3.6%"), and commas or parentheses inside sentences.
+- **No em dashes, anywhere in the interface.** A label joined to its value with an em dash reads as generated text, and users notice. Use a middot for label separators ("Weighted churn · Apr"), a colon for key-value pairs ("Churn: 3.6%"), and commas or parentheses inside sentences.
 - **The middot (·) is the workhorse** for compact metadata rows: "12 files · 3 min read · updated Apr 2". It separates without shouting and reads cleanly at small sizes.

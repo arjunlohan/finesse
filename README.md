@@ -1,8 +1,8 @@
 # finesse
 
-**Design-engineering craft for interfaces that feel polished, fast, and physical** — packaged as an Agent Skill for Claude Code, Cursor, Codex, Gemini CLI, and other skill-aware coding assistants.
+**Design-engineering craft for interfaces that feel polished, fast, and physical**: packaged as an Agent Skill for Claude Code, Cursor, Codex, Gemini CLI, and other skill-aware coding assistants.
 
-Great interfaces are rarely one big thing. They're an accumulation of small, individually invisible details that compound — *felt, not seen*. `finesse` teaches your AI coding assistant those details as concrete, committed defaults: a motion-token system, interaction states, surfaces & depth, typography, layout & color, performance, and accessibility.
+Great interfaces are rarely one big thing. They're an accumulation of small, individually invisible details that compound: *felt, not seen*. `finesse` teaches your AI coding assistant those details as concrete, committed defaults: a motion-token system, interaction states, surfaces & depth, typography, layout & color, performance, and accessibility.
 
 ## Install
 
@@ -31,7 +31,7 @@ Once installed it **auto-triggers** on UI / animation / "make it feel better" wo
 - **Framework-agnostic first.** Every technique leads with vanilla CSS / the Web Animations API, then shows Tailwind and Motion (`motion`/`framer-motion`) variants. It won't add an animation dependency that isn't already in your `package.json`.
 - **Committed numbers, not vibes.** One motion-token scale (durations + easings + springs) instead of hand-picked values; exact thresholds with the negative case taught alongside ("don't do X, because…").
 - **Progressive disclosure.** `SKILL.md` carries every number you need to act; the reference files are pulled in on demand for depth.
-- **Accessibility is not optional.** A first-class `prefers-reduced-motion` policy (substitute, don't delete), forced-colors, focus, and contrast are baked in — not bolted on.
+- **Accessibility is not optional.** A first-class `prefers-reduced-motion` policy (substitute, don't delete), forced-colors, focus, and contrast are baked in: not bolted on.
 
 ## License
 
