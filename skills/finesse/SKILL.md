@@ -1,6 +1,6 @@
 ---
 name: finesse
-description: Design-engineering craft for making interfaces feel polished, fast, and physical. Use when building or reviewing UI components, implementing animations or transitions, tuning motion/easing/duration, adding hover/active/focus states, loading/empty/error states, micro-interactions, shadows, borders, radius, typography, or spacing. Triggers on UI polish and "feel" work: "make it feel better", "feels off", "feels janky", "make it pop", "too fast"/"too slow", animation timing, stagger, spring, interruptible animation, prefers-reduced-motion, focus ring, optical alignment, tabular numbers, skeleton/loading state, optimistic UI.
+description: Design-engineering craft for making interfaces feel polished, fast, and physical. Use when building or reviewing UI components, implementing animations or transitions, tuning motion/easing/duration, adding hover/active/focus states, loading/empty/error states, micro-interactions, shadows, borders, radius, typography, or spacing. Triggers on UI polish and "feel" work: "make it feel better", "feels off", "feels janky", "make it pop", "too fast"/"too slow", animation timing, stagger, spring, interruptible animation, prefers-reduced-motion, focus ring, optical alignment, tabular numbers, skeleton/loading state, optimistic UI, drag/swipe/sheet gestures and momentum, translucent/glass materials, or auditing and planning motion fixes across a whole codebase.
 ---
 
 # Finesse
@@ -12,7 +12,8 @@ Great interfaces are rarely one big thing. They are an accumulation of small, in
 ## How to use this skill
 
 - **When building UI**, apply these principles by default: you don't need to be asked. Reach for the motion tokens below instead of inventing one-off durations.
-- **When reviewing or "making something feel better"**, audit against the [Review checklist](#review-checklist) and return the [Review output contract](#review-output-contract): every change, grouped, before/after. Do not report a subset.
+- **When reviewing or "making something feel better"**, default to flagging: approval is earned. Run the [escalation triggers](#escalation-triggers-flag-on-sight), return the [review output contract](#review-output-contract) (every change, grouped, before/after, never a subset), close with a [verdict](#the-verdict), and confirm feel with the [feel check](#feel-check).
+- **When auditing a whole codebase** (not a single diff), use [audit mode](#audit-mode-survey-and-plan): survey the surface, rank findings by leverage, and write self-contained [plans](PLAN-TEMPLATE.md) a cheaper model can execute without touching your source.
 - **Load a reference file** (linked throughout) when you need the long-form rationale, the good-vs-bad code, or the decision tables. `SKILL.md` alone has every number you need to *act*.
 - **Framework-agnostic first.** Examples lead with vanilla CSS / the Web Animations API. Tailwind and Motion (`motion`/`framer-motion`) variants follow. Don't add an animation dependency that isn't already in `package.json`: check first.
 
@@ -72,6 +73,9 @@ Every animation in the product should pull from one small scale. Inconsistent, h
 6. **Origin-aware:** set `transform-origin` so things grow from their trigger (a dropdown opens from its button).
 7. Press feedback `scale(0.96)`; stagger groups ~`100ms`, words ~`80ms`.
 
+**Gestures** → [gestures.md](gestures.md)
+- Drag, swipe, sheets, drag-to-reorder: track the finger **1:1**, hand off the release velocity into the settle spring, stay interruptible (animate from the live value), and **rubber-band** at edges instead of hard-stopping.
+
 **States & feedback** → [interaction-states.md](interaction-states.md)
 8. Every interactive element needs **hover, active, and `:focus-visible`**: but gate hover behind `@media (hover: hover)` so it doesn't stick on touch.
 9. **Feedback is immediate and trigger-local:** an inline checkmark on "copied," not a toast across the screen. Toggles take effect instantly; disable submit buttons after submit.
@@ -83,6 +87,7 @@ Every animation in the product should pull from one small scale. Inconsistent, h
 13. **Shadows for elevation, not dividers.** Light comes from above; layer shadows and tint them with the surface hue: never pure black. Use real borders for dividers, table cells, and input outlines.
 14. **Optical > mathematical alignment:** icon-side button padding is ~2px less than the text side; nudge play triangles ~2px right; fix asymmetric glyphs in the SVG.
 15. **Hit area ≥ 44×44px** (≥40 acceptable); extend small controls with a pseudo-element. Never overlap two hit areas.
+- **Translucent materials** (glass chrome via `backdrop-filter`): material weight encodes hierarchy, never stack two light glass layers, and solidify under `prefers-reduced-transparency`.
 
 **Typography** → [typography.md](typography.md)
 16. **Hierarchy via weight and color, not size alone.** Three text colors (primary/secondary/tertiary); never pure black. Body & inputs **≥16px** (inputs <16px trigger iOS zoom).
@@ -149,6 +154,62 @@ When reviewing code or "making it feel better," return findings as **before/afte
 - [ ] `prefers-reduced-motion` honored with substitutions, not deletions
 - [ ] Information never conveyed by motion or color alone
 
+## Escalation triggers (flag on sight)
+
+The high-severity tells. Any one of these is a finding, not a maybe:
+
+- `transition: all`, or animating a layout property (`width`/`height`/`top`/`left`/`margin`/`padding`).
+- `ease-in` or a weak built-in easing on anything entering or on a general state change; `linear` on discrete UI.
+- Any animation on a keyboard-initiated or 100+/day action.
+- A UI transition over ~300ms with no stated reason, or the same duration for enter and exit.
+- `scale(0)`, or an opacity-only entrance with no `translate`.
+- `transform-origin: center` or unset on a trigger-anchored popover/dropdown/tooltip (modals stay centered, that is exempt).
+- Keyframes on toasts, toggles, or anything triggered rapidly or reversibly.
+- Framer Motion `x`/`y`/`scale` shorthands on motion that runs while the page is busy; a CSS variable on a parent driving child transforms.
+- Missing `prefers-reduced-motion`; ungated `:hover` motion; a focus outline removed with no replacement.
+- A colored accent stripe on a card or alert; an em dash in UI copy.
+
+## Remedial hierarchy (prefer earlier moves)
+
+When you propose a fix, prefer the earliest move that solves it:
+
+1. **Delete** the animation (high-frequency, no purpose, keyboard-triggered).
+2. **Reduce** it (shorter, smaller travel, fewer animated properties).
+3. **Fix the easing** (`ease-in` → `--ease-out`/custom curve; weak keyword → an authored curve).
+4. **Fix origin and physicality** (`transform-origin`; `scale(0)` → `scale(0.9)` + opacity).
+5. **Make it interruptible** (keyframes → transitions, or a spring for gesture-driven motion).
+6. **Move it to the GPU** (layout props → `transform`/`opacity`; shorthand → full transform string).
+7. **Asymmetric timing** (slow the deliberate phase, snap the system response).
+8. **Polish** (blur to mask a crossfade, stagger a group, `@starting-style` for entry).
+9. **Accessibility and cohesion** (reduced-motion + hover gating; match the product's personality).
+
+## The verdict
+
+Close every review with an explicit decision:
+
+- **Block** if there is any feel-breaking regression: `ease-in`/sluggish easing on UI, `scale(0)`, animation on a keyboard or high-frequency action, a non-GPU animation with an easy GPU fix, or a removed focus ring.
+- **Approve** only when none of those are present, durations and easing are in bounds, stateful motion is interruptible, and reduced-motion is honored. Approval is earned, not the default. "The motion here is already right" is a valid result.
+
+## Feel check
+
+Motion can be mechanically correct and still feel wrong; verify feel, not just code, before calling it done:
+
+- **Slow-mo.** Play it at ~10% (DevTools Animations panel) and watch for coordinated properties drifting out of sync, an easing that stalls, or a wrong `transform-origin`.
+- **Frame-by-frame.** Step through a crossfade or icon swap; two states double-exposed means it needs blur or a tuned curve.
+- **Real device for gestures.** Test drags, swipes, and sheets on actual touch hardware ([gestures.md](gestures.md)), not just a desktop pointer.
+- **Fresh eyes.** Review the motion the next day. Imperfections invisible while building surface later.
+
+## Audit mode: survey and plan
+
+For a whole codebase rather than a single diff, run finesse as an audit: spend the capable model's judgement on understanding the motion and deciding what is worth fixing, and hand execution to any agent, including cheaper models. It plans; it does not patch.
+
+1. **Recon.** Map the surface first: framework, motion libraries (Motion, GSAP, plain CSS, WAAPI), component libraries (Radix, Base UI, shadcn/ui), where motion and tokens live, the product's personality, and a **frequency map** (what is hit 100+/day vs occasionally vs rarely). Frequency drives severity.
+2. **Audit in parallel** against finesse's areas: Motion, Gestures, States, Surfaces, Typography, Layout & color, Performance, Accessibility. For anything past a small repo, fan out read-only subagents, one per area (or per app region), each returning findings only (`file:line` + evidence, no fixes).
+3. **Vet and rank.** Re-read the cited code for every finding yourself; reject anything by-design or exempt (`transform-origin: center` on a modal is correct). Present the survivors as one table ordered by **leverage** (impact over effort), with a severity per row.
+4. **Plan, do not patch.** Never edit source in this mode. For each selected finding write a self-contained plan into `plans/NNN-*.md` using [PLAN-TEMPLATE.md](PLAN-TEMPLATE.md), stamped with the commit, with a repo-conventions section and a mandatory [feel check](#feel-check). Then write `plans/README.md`: order, dependencies, status. Any agent can execute a plan afterward with zero context.
+
+Severity: **HIGH** = feel-breaking (wrong easing on UI, animation on keyboard/high-frequency actions, dropped frames, `scale(0)`); **MEDIUM** = noticeably off (wrong origin, non-interruptible dynamic UI, missing reduced-motion); **LOW** = polish (stagger, blur-masked crossfades, token consolidation).
+
 ## Model notes
 
 Newer models need fewer rules, not more. Treat this skill as a **calibration layer**: the tokens and thresholds are committed *defaults*, not shackles: when a product's design language genuinely demands different values, change the tokens once at `:root` and say so, rather than scattering one-off exceptions.
@@ -161,10 +222,13 @@ Newer models need fewer rules, not more. Treat this skill as a **calibration lay
 
 | File | Read it for |
 | --- | --- |
-| [motion.md](motion.md) | Duration/easing/spring tokens in depth, enter/exit recipes, interruptibility, origin, stagger, when-NOT-to-animate, modern primitives |
-| [interaction-states.md](interaction-states.md) | Hover/active/focus-visible/disabled, loading & skeletons, empty/error states, optimistic UI, menus, feedback |
-| [surfaces.md](surfaces.md) | Concentric radius, shadows vs borders & elevation, image outlines, optical alignment, hit areas |
+| [motion.md](motion.md) | Duration/easing/spring tokens in depth, enter/exit recipes, interruptibility, origin, stagger, clip-path reveals, 3D transforms, cohesion, when-NOT-to-animate, modern primitives |
+| [gestures.md](gestures.md) | Drag/swipe/sheets: 1:1 tracking, velocity handoff, momentum projection, rubber-banding, interruptibility, multi-touch, reduced-motion |
+| [interaction-states.md](interaction-states.md) | Hover/active/focus-visible/disabled, loading & skeletons, empty/error states, optimistic UI, menus, tooltips, multimodal feedback |
+| [surfaces.md](surfaces.md) | Concentric radius, shadows vs borders & elevation, translucent/glass materials, image outlines, optical alignment, hit areas |
 | [typography.md](typography.md) | Text wrapping, smoothing, tabular numbers, hierarchy, measure, line-height, fluid sizing |
 | [layout-and-color.md](layout-and-color.md) | Spacing scale & grouping, alignment, near-black/white, functional color scales, depth/shadow theory |
 | [performance.md](performance.md) | Compositor-only animation, `will-change`, FLIP, the tool ladder, perceived speed, 60fps/RAIL |
-| [accessibility.md](accessibility.md) | `prefers-reduced-motion` policy, forced-colors, contrast, focus, semantics/ARIA, vestibular safety |
+| [accessibility.md](accessibility.md) | `prefers-reduced-motion` policy, forced-colors, reduced-transparency/contrast, contrast ratios, focus, semantics/ARIA, vestibular safety |
+| [vocabulary.md](vocabulary.md) | Reverse glossary: turn a described effect ("the springy popover thing") into the precise term to ask for |
+| [PLAN-TEMPLATE.md](PLAN-TEMPLATE.md) | The self-contained plan format [audit mode](#audit-mode-survey-and-plan) writes for a cheaper model to execute |
