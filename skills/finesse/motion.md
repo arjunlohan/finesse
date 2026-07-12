@@ -304,6 +304,25 @@ const item = {
 
 Under reduced motion, Motion respects a `MotionConfig reducedMotion="user"` wrapper, or gate the `y` offset to `0` yourself. **Don't** delete the stagger and dump everything in at once *and* keep a long delay: just remove the transform and let opacity (or nothing) carry it.
 
+### Percentage translates for off-edge starts
+
+Translate percentages resolve against the element's **own** size, not its parent's and not the viewport's: `translateY(100%)` moves an element by exactly its own height, `translateY(-100%)` by its full height upward, whatever its pixel dimensions turn out to be. That makes it the robust way to park an edge-anchored surface just out of view before it animates in: a bottom drawer hidden one full height below the fold, a toast tucked its own height above the top edge, with no hardcoded pixel offset that shatters the moment the content resizes or the copy wraps to a second line.
+
+```css
+/* Drawer parked exactly its own height below the viewport, then slides up in */
+.drawer {
+  transform: translateY(100%);                 /* fully hidden, no magic number */
+  transition: transform var(--duration-slow) var(--ease-ios);
+}
+.drawer[data-open] { transform: translateY(0); }
+
+/* Toast parked its own height above the top edge */
+.toast            { transform: translateY(-100%); }
+.toast[data-show] { transform: translateY(0); }
+```
+
+Prefer percentage translates over magic-number pixels for any "just off the edge" start. Note the contrast with [Exit animations](#exit-animations): a panel *drifting* away fades on a small fixed `translateY(-8px)`, but a surface that genuinely *lives* off an edge slides its full `100%`. The distance follows whether the thing is drifting or traveling home.
+
 ---
 
 ## Exit animations
@@ -421,6 +440,127 @@ A button that doesn't physically respond to a press feels dead. Scale it down sl
 ```
 
 Pair this with the hover/focus rules in [interaction-states.md](interaction-states.md): press is one third of the hover/active/focus-visible triad every interactive element needs. Gate any *hover* transform behind `@media (hover: hover)` so it doesn't stick on touch; the `:active` press is fine on touch.
+
+---
+
+## Reveal and wipe with clip-path
+
+`clip-path: inset(top right bottom left)` hides an element by eating in from each edge: each of the four values is how far that side is clipped inward. Animating the inset is **compositor-friendly**, in the same tier as the properties [performance.md](performance.md) clears for animation (see the `will-change` table there): no layout, no paint. It buys you reveals and wipes a plain fade can't express, because you're sweeping a hard edge across content rather than dissolving the whole thing at once.
+
+### Scroll reveal: wipe up as it enters
+
+Start fully clipped from the bottom (`inset(0 0 100% 0)`: the bottom 100% is eaten away, nothing shows), animate to `inset(0 0 0 0)` (nothing clipped) when the element crosses into view. Drive it with an `IntersectionObserver` so the wipe fires on entry, not on load, and never plays off-screen (the same visibility discipline as [performance.md](performance.md)).
+
+```css
+.reveal {
+  clip-path: inset(0 0 100% 0);                /* hidden: bottom fully clipped */
+  transition: clip-path var(--duration-slow) var(--ease-out);
+}
+.reveal[data-in] { clip-path: inset(0 0 0 0); }  /* wiped open */
+```
+```js
+const io = new IntersectionObserver(([e]) => {
+  if (e.isIntersecting) { e.target.dataset.in = ''; io.unobserve(e.target); }
+});
+io.observe(document.querySelector('.reveal'));
+```
+
+### Hold-to-delete / progress fill
+
+A colored overlay clipped `inset(0 100% 0 0)` (fully eaten from the right, invisible) that opens to `inset(0 0 0 0)` as the user holds. This is an **asymmetric-timing** case, the same principle as [Exit animations](#exit-animations): the fill grows *slowly* and deliberately while the finger is down (the user is committing), then snaps back *fast* on release (the system acknowledging the abort). Slow to commit, fast to cancel.
+
+```css
+.hold-fill {
+  clip-path: inset(0 100% 0 0);                /* empty */
+  transition: clip-path var(--duration-fast) var(--ease-out);   /* fast snap-back on release */
+}
+.hold-btn:active .hold-fill {
+  clip-path: inset(0 0 0 0);                    /* full */
+  transition-duration: 1200ms;                 /* deliberately beyond the token scale: a hold is a gesture, not a UI transition */
+  transition-timing-function: linear;          /* constant fill reads as a real progress bar */
+}
+```
+
+### Seamless tab color transition
+
+To move an active-state color across a tab row without the mid-transition muddiness of crossfading every tab's `color` at once, **duplicate the label layer**: render the tabs twice, style the top copy as the active state (its own color and background), then clip that active copy to just the active tab's rectangle and animate the clip on tab change. One edge slides; the color itself never interpolates, so there's no dead grey midpoint. This beats timing individual `color` transitions, which never crossfade cleanly.
+
+```css
+.tabs         { position: relative; }
+.tabs__active {                                  /* the duplicated, active-styled copy */
+  position: absolute; inset: 0;
+  color: var(--color-active); background: var(--surface-active);
+  clip-path: inset(0 var(--clip-right) 0 var(--clip-left));
+  transition: clip-path var(--duration-base) var(--ease-in-out);   /* moving across: in-out */
+}
+```
+```js
+function selectTab(el, active) {
+  const row = el.closest('.tabs').getBoundingClientRect();
+  const tab = el.getBoundingClientRect();
+  active.style.setProperty('--clip-left',  `${tab.left - row.left}px`);
+  active.style.setProperty('--clip-right', `${row.right - tab.right}px`);
+}
+```
+
+### Before/after comparison slider
+
+Stack two images, clip the top one `inset(0 R 0 0)` and drive the right inset `R` straight from the drag position. No extra DOM, no canvas, fully composited: the handle just writes one number.
+
+```css
+.compare        { position: relative; }
+.compare__after { position: absolute; inset: 0; clip-path: inset(0 var(--split) 0 0); }
+```
+```js
+slider.addEventListener('pointermove', (e) => {
+  const { left, width } = slider.getBoundingClientRect();
+  const pct = Math.min(1, Math.max(0, (e.clientX - left) / width));
+  after.style.setProperty('--split', `${(1 - pct) * 100}%`);   // right inset shrinks as you drag right
+});
+```
+
+A drag is direct manipulation: put **no** transition on `--split`, the clip must track the finger 1:1. A transition here would lag the wipe behind the handle.
+
+### Reduced motion
+
+A clip-path wipe is motion. Under `prefers-reduced-motion: reduce`, skip the reveal and show the element in its final, fully-unclipped state immediately: never leave it stuck clipped. See [accessibility.md](accessibility.md).
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .reveal { transition: none; clip-path: inset(0 0 0 0); }
+}
+```
+
+---
+
+## 3D transforms for depth
+
+`rotateX()` and `rotateY()`, with `transform-style: preserve-3d` on the moving element and a `perspective` on its parent, give you real depth instead of a flat spin: a card that flips to reveal a genuine back face, a coin or badge that turns on its axis, a subtle tilt-toward-the-cursor on hover. All of it rides `transform` alone, so it stays on the compositor (see [performance.md](performance.md)).
+
+Keep it **purposeful**, the same bar as every other section here: a flip that shows two real faces, a small tilt that adds life to a hero card. A 3D spin bolted onto a high-frequency control, or rotation for its own sake, is decoration: cut it. And a large 3D rotation is a genuine **vestibular trigger**, so gate it under reduced motion and substitute a flat fade or an instant swap, never just a slower spin ([accessibility.md](accessibility.md)).
+
+```css
+.flip { perspective: 1000px; }                   /* depth lives on the parent */
+.flip__inner {
+  position: relative;
+  transform-style: preserve-3d;                  /* children keep their z-depth */
+  transition: transform var(--duration-slow) var(--ease-in-out);   /* morph in place: in-out */
+}
+.flip[data-flipped] .flip__inner { transform: rotateY(180deg); }
+
+.flip__front, .flip__back {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;                   /* hide the mirrored reverse side */
+}
+.flip__back { transform: rotateY(180deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flip__inner { transition: opacity var(--duration-fast) linear; transform: none; }
+  .flip[data-flipped] .flip__front { opacity: 0; }   /* crossfade the faces, no rotation */
+}
+```
+
+A flip is on-screen morphing, so it takes `--ease-in-out`, not `--ease-out`. Bigger travel (a full-screen card expanding into a tilted detail) scales the duration up per the [Duration](#duration) ladder, and the vestibular caveat only gets stricter as the rotation grows.
 
 ---
 
@@ -568,4 +708,16 @@ Where support is missing, the `grid-template-rows: 0fr → 1fr` trick remains th
 
 ---
 
-*Cross-references: [SKILL.md](SKILL.md) (the contract and headline numbers) · [accessibility.md](accessibility.md) (full `prefers-reduced-motion` policy, vestibular safety) · [performance.md](performance.md) (compositor-only animation, the tool ladder, 60fps/RAIL) · [interaction-states.md](interaction-states.md) (hover/active/focus-visible triad, feedback).*
+## Cohesion: match motion to personality
+
+Motion has a personality, and a product should speak in **one** motion voice end to end: one easing family, one duration feel, one bounce budget. That character is a deliberate choice, not a per-component whim. A crisp operational tool (dashboard, admin, trading UI) stays fast and low-bounce: `--duration-fast`/`--duration-base`, `--ease-standard`/`--ease-out`, bounce `0`. A playful consumer app can run a touch slower and springier: reach for `--duration-slow`, a little `--ease-ios` swagger on sheets, bounce `~0.2` on the affordances that carry momentum. Neither is more correct; the mistake is mixing them.
+
+The tell is a single bouncy widget marooned in an otherwise crisp app, or one instant, businesslike control in an otherwise soft and springy one. It reads exactly like a mismatched typeface dropped into set text: the eye can't say why, but it registers as off, the motion equivalent of a font that doesn't belong. Pick the character deliberately from the token scale, then hold it across every component: same easing family, same duration band, same bounce budget everywhere.
+
+This is the motion half of **"design for the stated context"** in [layout-and-color.md](layout-and-color.md): the visual language and the motion language have to describe the same product.
+
+And the throughline that governs this whole file, restated one last time: when you can't name why something moves, or whether the way it moves fits the product, the strongest move is almost always to **remove it**. The best animation is often no animation.
+
+---
+
+*Cross-references: [SKILL.md](SKILL.md) (the contract and headline numbers) · [accessibility.md](accessibility.md) (full `prefers-reduced-motion` policy, vestibular safety) · [performance.md](performance.md) (compositor-only animation, the `will-change` table, the tool ladder, 60fps/RAIL) · [interaction-states.md](interaction-states.md) (hover/active/focus-visible triad, feedback) · [layout-and-color.md](layout-and-color.md) (design for the stated context, spacing & color language).*

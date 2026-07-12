@@ -384,6 +384,35 @@ async function copy(text, button) {
 
 **Toggles take effect immediately: never gate a toggle behind a confirm step or a separate "Save."** A switch that flips and *then* asks "Are you sure?" breaks the mental model of a switch. If the action is dangerous enough to need confirmation, it shouldn't be a toggle; make it a button with a confirm flow. The toggle's own state change is the feedback; back it with optimistic UI so it flips instantly and reconciles in the background.
 
+## Multimodal feedback (motion, sound, haptics)
+
+Feedback can combine channels: a toggle can flip (visual), tick (sound), and buzz (haptic) at the same instant. Combining them is powerful and easy to get wrong. Three rules govern it.
+
+**1. Causality: fire on the actual causal event, matched to the action's physicality.** The buzz fires the moment the toggle flips or the item snaps home, off that state change, not off a `setTimeout` that "should" line up with it. Feedback pinned to a timer drifts out of sync with the thing it describes, and the user can no longer tell what caused it. Match character to the action too: a heavy snap earns a firmer buzz than a light tick, so the feedback *feels* like the thing that happened.
+
+**2. Harmony: every channel lands on the same frame.** The visual, the sound, and the haptic must fire together. Latency between them breaks the illusion: a buzz that arrives 80ms after the visual reads as a glitch, not as feedback. Do not let a CSS transition lag behind a `navigator.vibrate()` call or an audio cue. Trigger all three from one handler on the causal event, so they resolve in the same frame.
+
+**3. Utility: reserve sound and haptics for moments that earn them.** Success, error, commit, snap, a threshold crossed: the events worth interrupting a second sense for. Buzzing on every hover and ticking on every keystroke is over-feedback, and it trains users to tune all of it out, including the one signal you needed them to feel. Most interactions want visual feedback alone; add a channel only when the moment is meaningful.
+
+**Web specifics.**
+- **Haptics: `navigator.vibrate()`.** Support-gated and mostly Android; it is a silent no-op on iOS Safari and desktop, so it can never be the *only* signal that something happened. Feature-detect before calling.
+- **Sound: a short preloaded clip or the Web Audio API.** Preload so the cue is ready on the causal frame, not fetched after it. Never autoplay: the first sound must follow a user gesture.
+- **Both are optional and defer to the device.** Honor the OS/device mute and any reduced-feedback setting, and expose an in-app toggle. Cross-reference [accessibility.md](accessibility.md): a single channel (a sound, a buzz, a color) must never be the ONLY carrier of meaning. Pair it with something visible and persistent.
+
+```js
+// One handler, one frame: fire every channel off the actual state change, not a timer.
+const tick = new Audio("/sfx/tick.mp3");   // preloaded so it is ready on the causal frame
+tick.preload = "auto";
+
+function onToggleCommit(toggle, on) {
+  render(toggle, on);                                       // visual
+  if (navigator.vibrate) navigator.vibrate(on ? 12 : 8);   // haptic: guarded; no-op off Android
+  if (soundEnabled) { tick.currentTime = 0; tick.play(); } // sound: opt-in, never autoplay
+}
+// Bound to the causal event (the flip), never to a timer:
+toggle.addEventListener("change", () => onToggleCommit(toggle, toggle.checked));
+```
+
 ## Menus & overlays
 
 **Open dropdowns on `mousedown`, not `click`.** `click` only fires after the button is *released*; `mousedown` fires the instant the button goes down. Opening on `mousedown` makes the menu feel like it was already there: it appears under the cursor before the user finishes the press. It's a large, free perceived-speed win for menus you open constantly.
@@ -443,3 +472,58 @@ function openOverlay(panel, trigger) {
 ```
 
 Full overlay semantics: focus trapping inside modal dialogs, `aria-expanded`/`aria-haspopup` on triggers, `role="menu"` vs `role="dialog"`, inert background, the native `popover` attribute and top-layer: are in [accessibility.md](accessibility.md). The behaviors above are the interaction floor every overlay must clear.
+
+## Tooltips
+
+A tooltip needs a **delay before its first appearance** so a pointer merely passing over a trigger on its way somewhere else doesn't flash a tooltip it never asked for. But that same delay fights toolbar scanning: once you've seen one tooltip, you expect the next to be immediate, and re-imposing the full delay on every adjacent trigger feels sluggish.
+
+**The rule: delay the first tooltip in a group, then open adjacent ones instantly.** While any tooltip in the group is already open, hovering a sibling trigger opens its tooltip with **zero delay and no entrance animation**, straight to shown. That keeps the accidental-trigger guard for the cold first hover while making a sweep across a toolbar feel immediate (a perceived-speed win: see [performance.md](performance.md)). When the last tooltip closes, wait a short grace period, then re-arm the delay.
+
+Implement with a single shared "a tooltip is open" flag. While it is true, stamp the next trigger with `data-instant`: the CSS reads it to zero the transition duration, the JS reads it (via the same flag) to zero the show-delay. This is a case where the right move is *not* to animate (see [motion.md](motion.md)): the fade is correct for the first, cold tooltip and wrong for every warm one after it. Gate the pointer path behind `@media (hover: hover) and (pointer: fine)` and drive keyboard through `:focus-within`, which shows at once (keyboard focus has no pass-through to guard against).
+
+```css
+.tooltip {                                  /* hidden by default, every device */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+/* keyboard: show on focus everywhere, no delay (no pass-through risk) */
+.has-tooltip:focus-within > .tooltip { opacity: 1; }
+
+@media (hover: hover) and (pointer: fine) {
+  .has-tooltip[data-open] > .tooltip { opacity: 1; }               /* pointer: JS gates the delay */
+  .has-tooltip[data-instant] > .tooltip { transition-duration: 0ms; }  /* warm group: no fade */
+}
+@media (prefers-reduced-motion: reduce) {
+  .tooltip { transition-duration: 0.01ms; }   /* no fade either way: accessibility.md */
+}
+```
+
+```js
+let groupWarm = false;       // true while any tooltip in the group is open
+let cooldown = null;
+const FIRST_DELAY = 500;     // cold hover: guard so a pass-through doesn't flash a tooltip
+const GRACE = 800;           // group stays warm this long after the last tooltip closes
+
+function bindTooltip(trigger) {              // trigger is the .has-tooltip element
+  let showTimer;
+  const show = () => {
+    trigger.setAttribute("data-open", "");
+    groupWarm = true;
+    clearTimeout(cooldown);
+  };
+  trigger.addEventListener("pointerenter", () => {
+    if (groupWarm) { trigger.setAttribute("data-instant", ""); show(); }  // warm: no delay, no fade
+    else showTimer = setTimeout(show, FIRST_DELAY);                       // cold: wait, then fade in
+  });
+  trigger.addEventListener("pointerleave", () => {
+    clearTimeout(showTimer);
+    trigger.removeAttribute("data-open");
+    trigger.removeAttribute("data-instant");
+    clearTimeout(cooldown);                  // last one out re-arms the first-hover delay
+    cooldown = setTimeout(() => { groupWarm = false; }, GRACE);
+  });
+}
+```
+
+The warm path calls `show()` synchronously (no `setTimeout`) and sets `data-instant` (no fade), so an adjacent tooltip appears the instant the pointer lands. The cold path waits `FIRST_DELAY` and fades in through `--duration-fast`. The `GRACE` timer, reset on every open and started on every close, is what makes "a group" behave as one: leave and re-enter within it and you stay warm; pause longer and the guard returns.

@@ -51,6 +51,15 @@ A canonical measurement makes the gap concrete: animating `top`/`left` (which tr
 
 The rule that falls out: **animate `translate()` / `scale()` / `rotate()`, never `top`/`left`/`width`/`height`.** Same visual result, an order of magnitude cheaper, and immune to main-thread jank.
 
+### Do not drive child transforms from a parent variable
+
+Changing an **inherited** CSS custom property on a parent forces a **Style** recalculation for **every** descendant that reads it: cheap for one element, expensive in a long list or a drawer with many rows. When you animate a single element (a swipe, a drag), write `element.style.transform` directly on that element; don't set `--swipe: Npx` on the container.
+
+```js
+element.style.setProperty('--swipe', `${d}px`); // BAD: recalcs styles for all children
+element.style.transform = `translateY(${d}px)`;  // GOOD: only this element
+```
+
 ## The Golden Rule
 
 **Animate ONLY `transform`, `opacity`, and `filter`.** Everything else forces Layout or Paint on the main thread and risks dropped frames. This is the same rule as principle #2 in [SKILL.md](SKILL.md) and #2 in [motion.md](motion.md): it shows up everywhere because it's the foundation.
@@ -223,6 +232,20 @@ Climb only as high as the job needs. Each rung up is more power and more weight,
 - Be actively wary of any animation that reads/writes layout in a `requestAnimationFrame` loop: that's main-thread work that *will* jank under load.
 - If you must animate in JS, animate only `transform`/`opacity` so at least the compositing stays off the main thread.
 
+### Motion's shorthand transform props are not hardware-accelerated
+
+Framer Motion / Motion's shorthand transform props (`x`, `y`, `scale`, `rotate`) are **not** hardware-accelerated. They animate through a `requestAnimationFrame` loop on the **main thread** and drop frames whenever the browser is busy (loading, parsing, painting). To get compositor-thread acceleration, pass the full transform string instead:
+
+```jsx
+// BAD: shorthand prop tweens on the main thread, janks under load
+<motion.div animate={{ x: 100 }} />
+
+// GOOD: full transform string, composited off the main thread
+<motion.div animate={{ transform: "translateX(100px)" }} />
+```
+
+This is why a shared-layout tab animation can stutter during a page load while the equivalent CSS animation (off the main thread) stays smooth.
+
 ## 60fps & the RAIL budget
 
 **60fps means a frame every ~16.67ms.** But the browser itself needs part of that frame for its own housekeeping (style, compositing, paint flushing), so your practical budget for *your* work is **~10ms per frame**, not 16. Blow past it and you miss the vsync deadline and drop a frame. Aim to keep **~99% of frames** under budget: the occasional dropped frame is invisible; a sustained 50% drop is the difference between silk and stutter (see the pipeline section).
@@ -249,6 +272,8 @@ The techniques, in rough order of impact (full treatment in [interaction-states.
 - **Skeletons over spinners.** A layout-shaped placeholder communicates *what* is coming and *where*, and reads as faster than a blank screen with a spinner: the user's eye has already parsed the structure by the time content lands.
 - **Latency hiding.** Use the moments you already own: prefetch on hover/intent, start the request on `pointerdown` instead of `click`, begin the open animation while data loads so the two overlap instead of queue.
 - **Instant trigger-local feedback.** Always acknowledge within the ~100ms window at the point of interaction, even when the underlying work is slow. Never let the *acknowledgment* wait on the work.
+
+**A smaller, complementary lever: motion speed itself reads as responsiveness.** Independent of the optimistic-UI moves above, the speed of the motion the user *does* see shapes how fast the whole thing feels. A faster-spinning spinner makes loading feel faster at an identical actual load time, and a shorter transition reads as snappier (a 180ms dropdown feels more responsive than a 400ms one) because the eye registers immediate movement. This is secondary to eliminating the wait, not a substitute for it: reach for it after the levers above. Pull the duration from the token scale (`--duration-fast`/`--duration-base`) rather than hand-picking it: see [motion.md](motion.md) for the full duration guidance.
 
 The governing principle: **UI responsiveness must never depend on network latency.** The interface should respond to the user at memory speed; the network reconciles afterward, invisibly. If any interaction's feedback is gated on a server response, that's the bug to fix before you touch a single easing curve.
 

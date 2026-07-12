@@ -76,6 +76,28 @@ In `forced-colors: active`, the OS replaces your palette with a user-chosen one:
 
 Use `forced-color-adjust: none` only on deliberate swatches (color pickers) where the actual color is the content.
 
+## Reduced transparency and increased contrast
+
+These are two more OS-level requests, siblings to forced-colors but driven by the user's own settings, and each stands on its own. `prefers-reduced-transparency`, `prefers-contrast`, `prefers-reduced-motion`, and `forced-colors` are independent signals: honor each on its own terms, and never assume one implies another (a user can ask for less transparency without asking for less motion).
+
+**`prefers-reduced-transparency: reduce` means solidify: raise opacity, drop the blur.** Translucency reduces legibility and, for some, causes discomfort, so this is an explicit request to cut it. When honored, make translucent surfaces frostier or fully solid: RAISE the background opacity and DROP the `backdrop-filter` blur. A glass toolbar becomes a solid one. (This is the flip side of the translucent-materials guidance in [surfaces.md](surfaces.md): the same surface, minus the see-through.)
+
+```css
+@media (prefers-reduced-transparency: reduce) {
+  .toolbar { background: var(--bg); backdrop-filter: none; }
+}
+```
+
+**`prefers-contrast: more` means separate harder: near-solid backgrounds, defined borders on essential boundaries.** Same spirit as forced-colors (make boundaries survive), but this one is user-driven and you keep your own palette, so reach for a contrasting neutral rather than a system color. Give essential edges a real, defined border.
+
+```css
+@media (prefers-contrast: more) {
+  .card { border: 1px solid var(--neutral-7); }
+}
+```
+
+`prefers-contrast: less` is the inverse (soften separation) and is rare in practice: you rarely need to handle it, so don't add code for it speculatively.
+
 ## Contrast
 
 - Body/UI text: **≥ 4.5:1** against its background. Large text (≥24px, or ≥18.7px bold) and meaningful non-text/UI boundaries: **≥ 3:1**.
@@ -111,6 +133,7 @@ Use `polite` for status, `assertive` only for genuinely urgent errors.
 - [ ] Visible `:focus-visible` ring on every interactive element; logical tab order; skip link
 - [ ] Modals trap + restore focus; `Esc` closes; route changes move focus
 - [ ] Essential boundaries survive `forced-colors: active` (real/transparent border, not just shadow)
+- [ ] Translucent surfaces solidify under `prefers-reduced-transparency`; boundaries strengthen under `prefers-contrast`
 - [ ] Text ≥ 4.5:1 contrast; UI boundaries ≥ 3:1
 - [ ] Native semantic elements; accessible name on every control; `aria-label` on icon-only buttons
 - [ ] Dynamic updates announced via `aria-live`

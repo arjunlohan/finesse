@@ -184,6 +184,29 @@ h1            { letter-spacing: -0.02em; }
 .eyebrow      { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; }
 ```
 
+## Optical sizing and honoring text-size settings
+
+The size scale still owes you two things: glyphs drawn *for* the size they render at, and type that scales *with* the reader's chosen text size instead of fighting it. This is the optical layer sitting on top of the size, tracking, and leading defaults above.
+
+**`font-optical-sizing: auto` for any variable font with an optical-size (`opsz`) axis.** These fonts reshape the glyph for its rendered size: heavier stems and more open counters at small sizes so small text stays legible, refined higher-contrast forms at display sizes so large text stays elegant. Turn it on and one family renders right across the whole scale, instead of a single drawn outline scaled to every size. It's inert on fonts without the axis, so setting it globally is safe. (Not every variable font ships `opsz`: check the font before relying on it.)
+
+**Tracking is a continuous function of size, not two hand-set exceptions.** The heading (`-0.02em`) and eyebrow (`+0.05em`) rules just above are the two visible ends of one curve: as type grows, tighten tracking (display wants negative, `-0.02em` and beyond); as it shrinks, loosen it slightly so the letters don't collide; body sits near `0`. Tracking and optical sizing pull in the same direction as size changes, so set them as a pair, not separately.
+
+**Size in `rem`, not `px`, so type honors the user's text-size setting.** OS large-text / Dynamic Type, browser zoom, and a changed root `font-size` all move the root; `rem` rides it, a hardcoded `px` ignores it and silently overrides the reader's accessibility choice. Size layout spacing in `rem`/`em` too, so a larger chosen size grows the grid *with* the type instead of clipping a control or shattering a row. This is why the ≥16px floor in **Sizing** below (and in [accessibility.md](accessibility.md)) is a floor for the default root, not a fixed pin: lock body to a literal `16px` and you have capped the reader at your size.
+
+```css
+:root { font-size: 100%; }               /* respect the user's root size, do not hardcode px */
+body   { font-size: 1rem; line-height: 1.5; }
+.display {
+  font-size: clamp(2rem, 5vw, 4.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;               /* tighter tracking as size grows */
+  font-optical-sizing: auto;             /* variable fonts reshape per size */
+}
+```
+
+Tailwind's default type and spacing scales are already `rem`-based, so `text-base`, `p-4`, and friends scale with the root for free; the opt-out is arbitrary pixel values (`text-[15px]`, `p-[10px]`), which pin against the root and drop the user's setting.
+
 ## Sizing
 
 **Body text ≥16px. Form inputs ≥16px: this one is non-negotiable.** Any `font-size` below 16px on a focusable `<input>`, `<select>`, or `<textarea>` makes **iOS Safari auto-zoom** the page on focus, yanking the layout around the field. The fix is simply never to go under 16px on inputs.

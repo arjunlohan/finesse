@@ -2,7 +2,7 @@
 
 How surfaces stack, separate, and catch light. This is the depth layer for the **Surfaces & depth** section of [SKILL.md](SKILL.md): the long-form rationale, the good-vs-bad code, and the decision tables. Shadow *color* theory overlaps with [layout-and-color.md](layout-and-color.md); focus rings and forced-colors behavior live in [accessibility.md](accessibility.md); the hover/active/focus transitions these surfaces ride on live in [interaction-states.md](interaction-states.md).
 
-Five things make a surface feel right: nested corners that agree, shadows that read as elevation instead of decoration, image edges that stay crisp without picking up dirt, alignment that satisfies the eye rather than the math, and hit areas big enough for a thumb. Get them wrong and the UI feels "off" without anyone being able to say why. That vagueness is the point: these are felt, not seen.
+Six things make a surface feel right: nested corners that agree, shadows that read as elevation instead of decoration, translucent chrome that layers light instead of blocking it, image edges that stay crisp without picking up dirt, alignment that satisfies the eye rather than the math, and hit areas big enough for a thumb. Get them wrong and the UI feels "off" without anyone being able to say why. That vagueness is the point: these are felt, not seen.
 
 ## Concentric border radius
 
@@ -179,6 +179,143 @@ This generalizes past dark mode: **pick one depth language per surface and commi
 |: | You're drawing many fine hairlines (dense lists, tables) where shadow blur would smear |
 
 When in doubt: *is this thing floating, or is it flat next to its neighbor?* Floating → shadow. Flat → border. And prefer **fewer** of both: reach for spacing and background-color separation first (see [layout-and-color.md](layout-and-color.md)).
+
+## Translucent materials (glass)
+
+A translucent surface is not a color, it is a **material**: a layer thin enough to let the content behind it show through, blurred so that content reads as texture instead of clutter. Done right it makes chrome feel like frosted glass floating over a live document; done wrong it is a muddy panel with unreadable text. The whole craft is controlling how much of the background bleeds through while making sure the foreground still wins.
+
+### Chrome is a layer, not a strip
+
+Build nav bars, toolbars, sidebars, and sheets as translucent **layers the content scrolls under**, not opaque bars that consume a fixed strip of the viewport. The recipe is two properties: a semi-transparent `background` plus a `backdrop-filter: blur()`. Add `saturate(180%)` so the colors passing underneath stay rich instead of washing out to grey through the blur.
+
+```css
+.toolbar {
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.6);            /* semi-transparent: content shows through */
+  backdrop-filter: blur(20px) saturate(180%);      /* frost what scrolls under; saturate keeps it rich */
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.4);  /* bright top edge: the material catching light */
+  box-shadow: var(--shadow-2);                     /* lift it off the content beneath */
+}
+```
+
+```html
+<!-- Tailwind -->
+<header class="sticky top-0 bg-white/60 backdrop-blur-xl backdrop-saturate-[1.8]
+               border-t border-white/40 shadow-md">…</header>
+```
+
+The **bright top edge is what sells it as glass**: a 1px `rgba(255,255,255,0.4)` line along the top reads as the material catching light along its leading edge, the same highlight you see on a real pane of frosted glass. Without it the surface looks flat and printed.
+
+### Material weight encodes hierarchy
+
+Translucency has a *weight*, and weight carries meaning. **Heavier, darker, more opaque materials separate structural regions** (a sidebar from content, chrome from canvas); **lighter, more transparent materials pull attention to interactive elements** (a floating button, a chip, a hovering menu). Match the weight to the job: structure is heavy and quiet, interaction is light and inviting.
+
+**Never stack a light translucent surface directly on another light translucent surface.** Two sheets of thin glass with nothing solid between them means the text on the top layer has no dependable backing: whatever shows through the lower layer shows through the upper one too, and legibility collapses. Good: a light chip floats over a solid card. Bad: a light chip over a light translucent panel over a photo. If you genuinely need layered glass, make the lower layer heavy (near-opaque) so the upper layer has something solid to sit on.
+
+### Bigger surfaces read as thicker
+
+A large sheet of glass is physically thicker than a small one, and thickness shows as **more blur and a deeper shadow**. A full-height sidebar or a large sheet gets a strong blur and a `--shadow-3`/`--shadow-4`-class shadow; a small chip or pill gets a light blur and `--shadow-1`. Uniform blur across every glass element flattens the hierarchy that size is trying to establish.
+
+Consider a **context-aware shadow**: a glass surface floating over busy or text-heavy content needs a heavier shadow to carve itself out from the noise, while the same surface over a plain background wants a lighter one so it does not look like it is trying too hard. Separation is the goal, and how much you need depends on what is behind.
+
+### Dim to focus, separate to keep flow
+
+Two different jobs, two different treatments:
+
+- **A modal task blocks.** Pair the translucent surface with a **dimming scrim** and push the background back or down (`scale(0.96)` or a small `translateY`), so the world behind visibly recedes and the eye has one place to land.
+- **A parallel, non-blocking panel does not block.** Use translucency and an offset **without a scrim**, so the underlying flow stays lit and legible and the user's context is never broken.
+
+```css
+/* Blocking task: scrim dims the world behind it */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+```
+
+Decision guidance: **does this surface demand the user's whole attention, or ride alongside their work?** Whole attention → scrim, push the background back. Alongside → translucency and offset, no scrim.
+
+### Vibrancy: keep text legible on glass
+
+Text on glass sits over a background that is blurred *and changing* as content scrolls under it, so the usual grey-on-white hierarchy stops being safe. **Do not put flat grey secondary text on glass**: over a light patch of the scrolling content it can vanish. Borrow the platform trick called *vibrancy*: push foreground text to **higher contrast, a slightly heavier weight, and a small `letter-spacing` bump** so it stays crisp over whatever passes beneath.
+
+```css
+.toolbar-label {
+  color: rgba(0, 0, 0, 0.9);     /* higher contrast than ordinary body text */
+  font-weight: 550;              /* a touch heavier, so it holds over a moving backdrop */
+  letter-spacing: 0.01em;        /* small tracking bump for crispness on glass */
+}
+```
+
+**Keep color off the translucent foreground.** A tint applied to text or an icon sitting on glass shifts as the backdrop shifts and reads as unreliable. Put any color on a *solid* layer (a filled pill, a solid badge) and let the glass carry only high-contrast neutrals. See [typography.md](typography.md) for the weight/color hierarchy this builds on.
+
+### Scroll edge, not a hard divider
+
+The instinct at the boundary between floating chrome and the content scrolling under it is a 1px border under the sticky header. On glass that hairline looks pasted on. Instead, **fade a small blur or gradient mask where content meets the floating chrome**, so content dissolves as it slides under rather than hitting a hard line.
+
+```css
+/* Content softly fades as it passes under the header, no hard rule */
+.scroll-region {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+}
+```
+
+Apply the fade **only where floating UI actually overlaps content.** An edge with nothing floating over it needs no mask, and adding one there just eats the first line of content for no reason.
+
+### Materialize, do not just fade
+
+A glass surface should enter like a material *arriving*, not like a flat panel fading up. **Animate a small scale together with the frosting** so the surface reads as gaining substance as it settles in (and reverse, faster, on exit, per the enter/exit tiers in [motion.md](motion.md)).
+
+The honest way to get that look cheaply is to **cross-fade a pre-blurred layer**: animate `opacity` and `transform: scale()` on a surface whose `backdrop-filter` is already applied, rather than animating the blur radius up from `0` every frame (see the performance note next).
+
+```css
+.glass-panel {
+  transform-origin: top center;                 /* grow from the trigger */
+  animation: materialize var(--duration-slow) var(--ease-out);
+}
+@keyframes materialize {
+  from { opacity: 0; transform: scale(0.96); }  /* pre-blurred layer fades and grows in */
+  to   { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glass-panel { animation: none; }             /* substitute an instant show */
+}
+```
+
+### Performance: backdrop blur is expensive
+
+A large or heavy `backdrop-filter` blur is **genuinely costly**: it is a paint-stage effect, and a big blur sampling a busy background can tank the framerate on weaker hardware. Two rules keep it cheap:
+
+1. **Keep the blur radius modest.** A 20px blur reads as glass; a 60px blur over a full-screen busy background does not read three times better, it just burns paint time.
+2. **Never animate the blur radius on a hot path.** Re-blurring every frame is the expensive part. Animate the **opacity** (and cheap `transform`) of a layer that is *already* blurred instead. See [performance.md](performance.md) for the compositor-vs-paint split.
+
+### Accessibility: honor the transparency and contrast preferences
+
+Translucency is a preference some users switch off, at the OS level, for legibility or comfort. Respect it:
+
+- **`prefers-reduced-transparency: reduce`** → make the surface frostier or fully solid; drop the see-through background.
+- **`prefers-contrast: more`** → give the surface a near-solid background and a defined border so its edge is unmistakable.
+
+```css
+@media (prefers-reduced-transparency: reduce) {
+  .toolbar {
+    background: #fff;               /* solid: nothing bleeds through */
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .toolbar {
+    background: rgba(255, 255, 255, 0.98);   /* near-solid */
+    border: 1px solid rgba(0, 0, 0, 0.2);    /* defined edge */
+  }
+}
+```
+
+Both are one-line media queries and both are non-optional: a beautiful material that is unreadable for the user who turned transparency off is a bug, not a style. See [accessibility.md](accessibility.md).
 
 ## Image outlines (for depth and crispness)
 
