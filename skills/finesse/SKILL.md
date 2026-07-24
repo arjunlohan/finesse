@@ -131,6 +131,7 @@ Before hand-rolling, check whether a platform primitive does it better (degrade 
 | Colored left/top accent bar on a card or alert | Tinted background + semantic glyph + words carry severity; the stripe is a generated-UI tell (only the active-tab underline earns an accent edge) |
 | Cards in one row with ragged heights | Rows share a height: keep `align-items: stretch` and flex the card body |
 | Em dashes in UI copy ("Signups: Apr") | Middot in labels ("Signups · Apr"), colon for key-value pairs; no em dashes anywhere in the interface |
+| Marketing-slop microcopy ("Unleash your workflow", "Oops!", emoji in headings) | Buttons name the action ("Save changes"); errors state cause + recovery; one word per referent; no emoji or exclamation standing in for a voice |
 | Chart story only reachable via hover, or no hover at all | Story lands with zero interaction (direct labels, threshold bands, annotations); points still reward hover with a tooltip, gated |
 
 ## Review output contract
@@ -153,6 +154,7 @@ When reviewing code or "making it feel better," return findings as **before/afte
 - [ ] Spacing groups related items; everything aligned; constrained scale
 - [ ] `prefers-reduced-motion` honored with substitutions, not deletions
 - [ ] Information never conveyed by motion or color alone
+- [ ] UI copy reads human: buttons name the action, errors state cause + recovery, labels are consistent, no marketing puffery or emoji headings
 
 ## Escalation triggers (flag on sight)
 
@@ -226,7 +228,7 @@ Newer models need fewer rules, not more. Treat this skill as a **calibration lay
 | [gestures.md](gestures.md) | Drag/swipe/sheets: 1:1 tracking, velocity handoff, momentum projection, rubber-banding, interruptibility, multi-touch, reduced-motion |
 | [interaction-states.md](interaction-states.md) | Hover/active/focus-visible/disabled, loading & skeletons, empty/error states, optimistic UI, menus, tooltips, multimodal feedback |
 | [surfaces.md](surfaces.md) | Concentric radius, shadows vs borders & elevation, translucent/glass materials, image outlines, optical alignment, hit areas |
-| [typography.md](typography.md) | Text wrapping, smoothing, tabular numbers, hierarchy, measure, line-height, fluid sizing |
+| [typography.md](typography.md) | Text wrapping, smoothing, tabular numbers, hierarchy, measure, line-height, fluid sizing, punctuation and microcopy (UI voice) |
 | [layout-and-color.md](layout-and-color.md) | Spacing scale & grouping, alignment, near-black/white, functional color scales, depth/shadow theory |
 | [performance.md](performance.md) | Compositor-only animation, `will-change`, FLIP, the tool ladder, perceived speed, 60fps/RAIL |
 | [accessibility.md](accessibility.md) | `prefers-reduced-motion` policy, forced-colors, reduced-transparency/contrast, contrast ratios, focus, semantics/ARIA, vestibular safety |

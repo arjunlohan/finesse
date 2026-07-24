@@ -269,6 +269,8 @@ Note the inversion: the shimmer is opted *in* via `(prefers-reduced-motion: no-p
 
 An empty state is a designed screen, never a blank void. A user who lands on emptiness with no explanation assumes the app is broken or that they did something wrong. Every collection that can be empty needs deliberate copy and a way forward.
 
+The *voice* of that copy, plain, specific, and calm, with no marketing puffery ("your powerful new dashboard") and no cutesy "Oops!", follows the [microcopy rules](typography.md#microcopy). The same register governs the error copy below.
+
 A complete empty state has three parts:
 
 1. **A one-line explanation**: what belongs here and why it's empty right now.

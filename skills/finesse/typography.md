@@ -250,3 +250,20 @@ Reserve `clamp()` for headings and hero/display type where the size genuinely sh
 
 - **No em dashes, anywhere in the interface.** A label joined to its value with an em dash reads as generated text, and users notice. Use a middot for label separators ("Weighted churn · Apr"), a colon for key-value pairs ("Churn: 3.6%"), and commas or parentheses inside sentences.
 - **The middot (·) is the workhorse** for compact metadata rows: "12 files · 3 min read · updated Apr 2". It separates without shouting and reads cleanly at small sizes.
+
+## Microcopy
+
+Copy is part of the craft. The same screen reads as considered or as generated, and often the tell is the words, not the pixels. Slop microcopy is the verbal accent-bar: an amateur signal that no one actually chose these words. Write UI text like a person wrote it for another person.
+
+The tells, and the fix:
+
+- **Fake-empowerment CTAs.** "Unleash your workflow," "Supercharge productivity," "Empower your team." A button names the action and its object: "Save changes," "Delete 3 files," "Invite teammates." The label should finish the sentence "When I click this, the app will ___."
+- **Cutesy or vague errors.** "Oops! Something went wrong 😕" says nothing and talks down to the user. Say what happened and how to recover: "Couldn't save. Check your connection and retry." Name the cause when you know it; give the next action always.
+- **Puffery in empty states.** An empty state is not a billboard. Drop "Welcome to your powerful new dashboard"; say what belongs here and the one action that fills it: "No invoices yet. Create your first one." (Empty, error, and loading *mechanics* live in [interaction-states.md](interaction-states.md); this section is the words that go in them.)
+- **Emoji and exclamation as tone.** Emoji in headings and stacked exclamation points are decoration standing in for a considered voice. Cut them and let the sentence carry the tone.
+- **Synonym cycling across labels.** If one concept is "Members" in the nav, "Users" in settings, and "People" in the invite dialog, the user pays a small tax each time. Pick one word per referent and repeat it everywhere; for labels, consistent beats varied.
+- **Adjectives where a number belongs.** "Blazing fast," "significantly improved." Show the figure or cut the claim: "Loads in under 200ms," or nothing.
+
+The register for system text is plain, specific, and calm. Sentence case, not Title Case or shouting caps (small eyebrow labels excepted, see above). Second person to the user, active voice about the system ("We couldn't reach the server," not "The server could not be reached"). Front-load the outcome: a toast, a notification, and a dialog title are each read in a single glance.
+
+This is the UI-facing slice of a broader standard: write like a sharp human, not an assistant. The full anti-slop catalog (throat-clearing openers, binary contrasts, importance puffery, weasel attribution, summary-recap endings) governs longer product copy too, docs, changelogs, onboarding, and is packaged in the [petergyang/no-ai-slop](https://github.com/petergyang/no-ai-slop) skill. Punctuation across all of it follows the rule just above (middot in labels, colon for key-value pairs, no em dashes).
