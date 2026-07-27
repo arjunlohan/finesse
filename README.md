@@ -6,6 +6,10 @@
 
 Great interfaces are rarely one big thing. They're an accumulation of small, individually invisible details that compound: *felt, not seen*. `finesse` teaches your AI coding assistant those details as concrete, committed defaults: a motion-token system, interaction states, surfaces & depth, typography, layout & color, performance, and accessibility.
 
+**[Live showcase](https://arjunlohan.github.io/finesse/): 15 UI components, each built twice by Opus 4.8 from the same prompt. The only variable was whether the agent read `finesse` first.**
+
+[<img src="https://github.com/user-attachments/assets/32532a72-31da-43a5-8ea5-fe720073528c" alt="finesse showcase: the same prompt, built with and without the skill, side by side" width="100%" />](https://arjunlohan.github.io/finesse/)
+
 ## Install
 
 ```sh
